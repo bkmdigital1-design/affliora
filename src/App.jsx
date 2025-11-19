@@ -18,7 +18,7 @@ export default function Affliora() {
     link: ''
   });
 
-  const ADMIN_PASSWORD = 'admin123'; // Change this to your secure password
+  const ADMIN_PASSWORD = 'bkmdigital321'; // Change this to your secure password
 
   useEffect(() => {
     loadProducts();
