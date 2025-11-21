@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { ExternalLink, Plus, Edit2, Trash2, X, LogOut } from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
-export default function Affliora() {
-  // Check if we're in admin mode via URL parameter
-  const isAdminMode = new URLSearchParams(window.location.search).get('admin') === 'true';
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyA-f8yZEY-CAUl7V5zA2xHduhz3M56pAec",
+  authDomain: "affliora.firebaseapp.com",
+  projectId: "affliora",
+  storageBucket: "affliora.firebasestorage.app",
+  messagingSenderId: "37842165334",
+  appId: "1:37842165334:web:2cd57f23a1906ac0b125f7"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+export default function App() {
+  const isAdminRoute = window.location.pathname === '/admin';
   
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -18,33 +33,25 @@ export default function Affliora() {
     link: ''
   });
 
-  const ADMIN_PASSWORD = 'bkmdigital321'; // Change this to your secure password
+  const ADMIN_PASSWORD = 'admin123'; // Change this to your secure password
 
   useEffect(() => {
     loadProducts();
   }, []);
 
-  const loadProducts = () => {
+  const loadProducts = async () => {
     try {
-      const stored = localStorage.getItem('affliora_products');
-      if (stored) {
-        setProducts(JSON.parse(stored));
-      }
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const productsData = [];
+      querySnapshot.forEach((doc) => {
+        productsData.push({ id: doc.id, ...doc.data() });
+      });
+      setProducts(productsData);
       setLoading(false);
     } catch (error) {
       console.error('Error loading products:', error);
       setProducts([]);
       setLoading(false);
-    }
-  };
-
-  const saveProducts = (updatedProducts) => {
-    try {
-      localStorage.setItem('affliora_products', JSON.stringify(updatedProducts));
-      setProducts(updatedProducts);
-    } catch (error) {
-      console.error('Error saving products:', error);
-      alert('Error saving product. Please try again.');
     }
   };
 
@@ -65,26 +72,31 @@ export default function Affliora() {
     setFormData({ name: '', image: '', description: '', link: '' });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name || !formData.image || !formData.description || !formData.link) {
       alert('Please fill in all fields');
       return;
     }
     
-    let updatedProducts;
-    if (editingId) {
-      updatedProducts = products.map(p => 
-        p.id === editingId ? { ...formData, id: editingId } : p
-      );
-      setEditingId(null);
-    } else {
-      const newProduct = { ...formData, id: Date.now() };
-      updatedProducts = [...products, newProduct];
+    try {
+      if (editingId) {
+        // Update existing product
+        const productRef = doc(db, 'products', editingId);
+        await updateDoc(productRef, formData);
+        setProducts(products.map(p => p.id === editingId ? { ...formData, id: editingId } : p));
+        setEditingId(null);
+      } else {
+        // Add new product
+        const docRef = await addDoc(collection(db, 'products'), formData);
+        setProducts([...products, { id: docRef.id, ...formData }]);
+      }
+      
+      setFormData({ name: '', image: '', description: '', link: '' });
+      setIsAdding(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
+      alert('Error saving product. Please try again.');
     }
-    
-    saveProducts(updatedProducts);
-    setFormData({ name: '', image: '', description: '', link: '' });
-    setIsAdding(false);
   };
 
   const handleEdit = (product) => {
@@ -98,10 +110,15 @@ export default function Affliora() {
     setIsAdding(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      const updatedProducts = products.filter(p => p.id !== id);
-      saveProducts(updatedProducts);
+      try {
+        await deleteDoc(doc(db, 'products', id));
+        setProducts(products.filter(p => p.id !== id));
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('Error deleting product. Please try again.');
+      }
     }
   };
 
@@ -112,7 +129,7 @@ export default function Affliora() {
   };
 
   // PUBLIC SITE VIEW
-  if (!isAdminMode) {
+  if (!isAdminRoute) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
         <header className="bg-white shadow-sm">
@@ -203,6 +220,12 @@ export default function Affliora() {
               >
                 Login to Admin Panel
               </button>
+              <a
+                href="/"
+                className="block text-center text-purple-600 hover:text-purple-700 mt-4"
+              >
+                ← Back to Public Site
+              </a>
             </div>
           </div>
         </div>
@@ -214,23 +237,31 @@ export default function Affliora() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <header className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-4 py-6 flex justify-between items-center flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Affliora Admin</h1>
             <p className="text-gray-600 mt-1">Manage your affiliate products</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition flex items-center gap-2"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
+          <div className="flex gap-3">
+            <a
+              href="/"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+            >
+              View Public Site
+            </a>
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition flex items-center gap-2"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8 flex gap-4">
+        <div className="mb-8">
           <button
             onClick={() => setIsAdding(true)}
             className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition flex items-center gap-2 shadow-lg"
@@ -238,12 +269,6 @@ export default function Affliora() {
             <Plus size={20} />
             Add New Product
           </button>
-          <a
-            href="/"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2 shadow-lg"
-          >
-            View Public Site
-          </a>
         </div>
 
         {isAdding && (
