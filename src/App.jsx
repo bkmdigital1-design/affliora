@@ -4,10 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   ExternalLink, Plus, Edit2, Trash2, X, LogOut, Search, Facebook,
   Instagram, Twitter, MessageCircle, Upload, Eye, EyeOff, BarChart3,
-  TrendingUp, Moon, Sun
+  TrendingUp
 } from "lucide-react";
 
+
+
 import { initializeApp } from "firebase/app";
+
 import {
   getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc,
   doc, increment, query, orderBy, serverTimestamp
@@ -59,9 +62,6 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
 
-  // UI / theme
-  const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && localStorage.getItem("affliora_dark") === "true");
-
   // products
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -72,6 +72,8 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
+
+  const [darkMode, setDarkMode] = useState(false);
 
   // form
   const [formData, setFormData] = useState({
@@ -104,13 +106,7 @@ export default function App() {
     twitter: "https://twitter.com/yourusername"
   };
 
-  // theme effect
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.documentElement.classList.toggle("dark", darkMode);
-      localStorage.setItem("affliora_dark", darkMode ? "true" : "false");
-    }
-  }, [darkMode]);
+  
 
   // auth listener (for admin)
   useEffect(() => {
@@ -224,7 +220,7 @@ export default function App() {
   };
 
   // ---------- Analytics: view + click logs ----------
-  const logView = async (productId) => {n
+  const logView = async (productId) => {
     try {
       await addDoc(collection(db, "viewLogs"), { productId, timestamp: serverTimestamp(), source: document.referrer || "direct" });
       // optionally increment 'views' counter on product doc (uncomment if desired)
@@ -357,11 +353,9 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button onClick={() => setDarkMode((d) => !d)} className="p-2 rounded bg-gray-100 dark:bg-gray-700">
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              {/* Admin link removed intentionally */}
+  {/* Admin link removed intentionally */}
             </div>
+
           </div>
 
           <div className="max-w-7xl mx-auto px-4 pb-6">
@@ -416,13 +410,13 @@ export default function App() {
           {/* Grid: 4 columns desktop, 2 mobile */}
           <section id="products">
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="p-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)}
               </div>
             ) : (
               <>
                 {filteredProducts.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {filteredProducts.map((product) => (
                       <article key={product.id} className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow hover:shadow-lg transition">
                         <a
@@ -564,7 +558,7 @@ export default function App() {
         {/* Add/Edit Modal */}
         {isAdding && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-4 w-full max-w-2xl">
+            <div className="bg-white rounded-xl p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-3">
                 <h3>{editingId ? "Edit" : "Add"} Product</h3>
                 <button onClick={() => { setIsAdding(false); setEditingId(null); }}><X /></button>
@@ -609,7 +603,7 @@ export default function App() {
         )}
 
         {/* Product list for admin */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {products.map((product) => (
             <div key={product.id} className="bg-white p-3 rounded shadow relative">
               {!product.visible && <div className="absolute left-0 top-0 bg-red-500 text-white px-2 py-1 text-xs rounded-br">HIDDEN</div>}
