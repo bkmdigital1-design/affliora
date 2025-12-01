@@ -52,15 +52,46 @@ const ProductSkeleton = () => (
     </div>
   </div>
 );
+// Add this helper function BEFORE "export default function App() {"
+const updateMetaTags = ({ title, description, image, url }) => {
+  const metaTitle = document.querySelector('meta[property="og:title"]');
+  if (metaTitle) metaTitle.content = title;
+  
+  const twitterTitle = document.querySelector('meta[property="twitter:title"]');
+  if (twitterTitle) twitterTitle.content = title;
+  
+  const metaDesc = document.querySelector('meta[property="og:description"]');
+  if (metaDesc) metaDesc.content = description;
+  
+  const twitterDesc = document.querySelector('meta[property="twitter:description"]');
+  if (twitterDesc) twitterDesc.content = description;
+  
+  const regularDesc = document.querySelector('meta[name="description"]');
+  if (regularDesc) regularDesc.content = description;
+  
+  const metaImage = document.querySelector('meta[property="og:image"]');
+  if (metaImage) metaImage.content = image;
+  
+  const twitterImage = document.querySelector('meta[property="twitter:image"]');
+  if (twitterImage) twitterImage.content = image;
+  
+  const metaUrl = document.querySelector('meta[property="og:url"]');
+  if (metaUrl) metaUrl.content = url;
+  
+  const twitterUrl = document.querySelector('meta[property="twitter:url"]');
+  if (twitterUrl) twitterUrl.content = url;
+};
 
 // ---------- Main Component ----------
 export default function App() {
-  const isAdminRoute = typeof window !== "undefined" && window.location.pathname === "/admin";
+  const isAdminRoute = typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.hash === "#admin");
+
 
   // auth
   const [user, setUser] = useState(null);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // products
   const [products, setProducts] = useState([]);
@@ -71,6 +102,7 @@ export default function App() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [showStats, setShowStats] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [activityLogs, setActivityLogs] = useState([]);
 
   const [darkMode, setDarkMode] = useState(false);
@@ -92,18 +124,18 @@ export default function App() {
   // filters + pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const PAGE_SIZE = 8;
+  const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
 
   // chart refs (if you add charts later)
   const CATEGORIES = ["All", "Digital Products", "Courses", "E-books", "Tools", "Templates", "Services", "Other"];
 
   const SOCIAL_LINKS = {
-    tiktok: "https://tiktok.com/@yourusername",
-    instagram: "https://instagram.com/yourusername",
-    whatsapp: "https://wa.me/yourphonenumber",
-    facebook: "https://facebook.com/yourpage",
-    twitter: "https://twitter.com/yourusername"
+    tiktok: "https://tiktok.com/@affliora_official",
+    instagram: "https://instagram.com/affliora_official",
+    whatsapp: "https://wa.me/254712762175",
+    facebook: "https://www.facebook.com/share/15QLmZD4dmS/",
+    twitter: "https://twitter.com/affliora"
   };
 
   
@@ -124,7 +156,26 @@ export default function App() {
     applyFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, searchQuery, selectedCategory, page]);
-
+  // Update Open Graph meta tags
+useEffect(() => {
+  if (selectedProduct) {
+    document.title = `${selectedProduct.name} - Affliora`;
+    updateMetaTags({
+      title: selectedProduct.name,
+      description: selectedProduct.description,
+      image: selectedProduct.image,
+      url: `${window.location.origin}/products/${selectedProduct.slug || selectedProduct.id}`
+    });
+  } else {
+    document.title = "Affliora - Your Gateway to Premium Digital Products";
+    updateMetaTags({
+      title: "Affliora - Your Gateway to Premium Digital Products",
+      description: "Discover curated digital products, courses, e-books, tools, and templates. Find the best resources for your needs.",
+      image: `${window.location.origin}/og-image.jpg`,
+      url: window.location.origin
+    });
+  }
+}, [selectedProduct]);
   // ---------- Firestore: load products ----------
   const loadProducts = async () => {
     setLoading(true);
@@ -243,16 +294,35 @@ export default function App() {
 
   // ---------- Admin Auth (Firebase email/password) ----------
   const handleAdminLogin = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-      setAdminEmail("");
-      setAdminPassword("");
-      await addDoc(collection(db, "activityLogs"), { action: "login", details: "Admin logged in", user: auth.currentUser?.email || "admin", timestamp: serverTimestamp() });
-    } catch (err) {
-      console.error("admin login", err);
-      alert("Login failed - check credentials");
+  try {
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    setAdminEmail("");
+    setAdminPassword("");
+    // Successfully logged in - the onAuthStateChanged will handle the UI update
+    // Log activity silently (don't wait for it)
+    addDoc(collection(db, "activityLogs"), { 
+      action: "login", 
+      details: "Admin logged in", 
+      user: auth.currentUser?.email || "admin", 
+      timestamp: serverTimestamp() 
+    }).catch(err => console.error("Log activity error:", err));
+  } catch (err) {
+    console.error("admin login error:", err);
+    console.error("Error code:", err.code);
+    console.error("Error message:", err.message);
+    
+    // Show specific error messages
+    if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+      alert("Invalid email or password. Please check your credentials.");
+    } else if (err.code === "auth/invalid-email") {
+      alert("Invalid email format.");
+    } else if (err.code === "auth/too-many-requests") {
+      alert("Too many failed attempts. Please try again later.");
+    } else {
+      alert("Login failed: " + err.message);
     }
-  };
+  }
+};
 
   const handleAdminLogout = async () => {
     try {
@@ -335,6 +405,10 @@ export default function App() {
   const getTotalClicks = () => products.reduce((s, p) => s + (p.clicks || 0), 0);
   const getTopProducts = () => [...products].sort((a, b) => (b.clicks || 0) - (a.clicks || 0)).slice(0, 5);
   const featured = products.find((p) => p.featured && p.visible !== false);
+  const openProductDetail = (product) => {
+  setSelectedProduct(product);
+  logView(product.id);
+};
 
   // ---------- UI: Public site (no admin link in header) ----------
   if (!isAdminRoute) {
@@ -347,13 +421,14 @@ export default function App() {
                 <span className="text-white text-2xl font-bold">A</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Affliora</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Affliora</h1>
                 <p className="text-sm text-gray-500">Your Gateway to Premium Digital Products</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
   {/* Admin link removed intentionally */}
+             <a href="#admin" className="text-xs text-gray-300 hover:text-gray-500 transition">•</a>
             </div>
 
           </div>
@@ -367,10 +442,10 @@ export default function App() {
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-700 bg-white"
                 />
               </div>
-              <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }} className="px-4 py-3 border rounded-xl bg-white">
+              <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }} className="px-4 py-3 border rounded-xl bg-white bg-white text-gray-600 font-medium">
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -380,12 +455,12 @@ export default function App() {
         <main className="max-w-7xl mx-auto px-4 py-12">
           {/* HERO + FEATURED */}
           <section className="mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md flex flex-col md:flex-row gap-6">
+            <div className="bg-white dark:bg-gray-200 rounded-2xl p-6 shadow-md flex flex-col md:flex-row gap-6">
               <div className="flex-1">
-                <h2 className="text-3xl font-bold">Find the best digital tools and courses</h2>
-                <p className="mt-2 text-gray-600 dark:text-gray-300">A curated collection of affiliate products — tutorials, tools, templates and more. Click any product to learn more and buy.</p>
+                <h2 className="text-3xl font-bold mt-2 text-gray-600 dark:text-gray-600">Find the best digital tools and courses</h2>
+                <p className="mt-2 text-gray-600 dark:text-gray-700">A curated collection of affiliate products - tutorials, tools, templates and more. Click any product to learn more and buy.</p>
                 <div className="mt-4 flex gap-3">
-                  <a className="px-4 py-2 rounded bg-gradient-to-r from-purple-600 to-blue-600 text-white" href="#products">Browse Products</a>
+                  <a className="px-4 py-2 rounded bg-gradient-to-r from-purple-500 to-purple-500 text-white" href="#products">Browse Products</a>
                 </div>
               </div>
 
@@ -401,7 +476,7 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-xl text-center">No featured product yet</div>
+                  <div className="bg-gray-100 dark:bg-gray-300 p-4 rounded-xl text-center text-gray-500 font-medium">No featured product yet</div>
                 )}
               </div>
             </div>
@@ -416,43 +491,70 @@ export default function App() {
             ) : (
               <>
                 {filteredProducts.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredProducts.map((product) => (
-                      <article key={product.id} className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow hover:shadow-lg transition">
-                        <a
-                          href={`/products/${product.slug || product.id}`}
-                          onClick={() => logView(product.id)}
-                          className="block"
-                        >
-                          <img src={product.image} alt={product.name} className="w-full h-40 object-cover" />
-                          <div className="p-4">
-                            <h3 className="font-semibold text-lg line-clamp-2">{product.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mt-2">{product.description}</p>
+                      <article key={product.id} className="bg-gray-100 dark:bg-gray-200 rounded-xl overflow-hidden shadow">
+                        <div className="flex flex-row gap-2 p-3">
+                          {/* Left: Product Image */}
+                          <button
+                            onClick={() => openProductDetail(product)}
+                            className="flex-shrink-0 cursor-pointer"
+                          >
+                            <img 
+                             src={product.image} 
+                             alt={product.name} 
+                             className="w-28 h-28 md:w-32 md:h-32 object-contain rounded-md bg-gray-50" 
+                             loading="lazy"
+                             onError={(e) => e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af"%3ENo Image%3C/text%3E%3C/svg%3E'}
+                            />
+                          </button>
+
+                          {/* Right: Content */}
+                          <div className="flex-1 flex flex-col gap-2">
+                            <button
+                              onClick={() => openProductDetail(product)}
+                              className="text-left focus:outline-none"
+                            >
+                              <h3 className="font-bold text-base line-clamp-2 text-gray-900">
+                                {product.name}
+                              </h3>
+                              <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                                {product.description}
+                              </p>
+                            </button>
+                            
+                            <button 
+                              onClick={() => trackClick(product.id, product.link)} 
+                              className="w-full bg-gradient-to-r from-purple-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all mt-auto transform hover:scale-105"
+                            >
+                              Get Product
+                            </button>
                           </div>
-                        </a>
-                        <div className="p-3 border-t flex items-center justify-between">
-                          <button onClick={() => trackClick(product.id, product.link)} className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-2 rounded">Get</button>
-                          <span className="text-xs text-gray-500">{product.category}</span>
                         </div>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16">No products found</div>
+                  <div className="text-center py-16">
+                   <div className="text-gray-400 mb-2">
+                     <Search size={48} className="mx-auto mb-3" />
+                   </div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No products found</h3>
+                  <p className="text-gray-500">Try adjusting your search or filters</p>
+                    </div>
                 )}
-
                 {/* Pagination */}
                 <div className="mt-8 flex items-center justify-center gap-3">
-                  <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-2 rounded bg-gray-200 dark:bg-gray-700">Prev</button>
-                  <span>Page {page} / {Math.max(1, Math.ceil(products.filter(p => p.visible !== false && (selectedCategory === 'All' || p.category === selectedCategory) && ((p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()))).length / PAGE_SIZE))}</span>
-                  <button disabled={(page * PAGE_SIZE) >= products.filter(p => p.visible !== false && (selectedCategory === 'All' || p.category === selectedCategory) && ((p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()))).length} onClick={() => setPage((p) => p + 1)} className="px-3 py-2 rounded bg-gray-200 dark:bg-gray-700">Next</button>
+                  <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">Prev</button>
+                  <span className="text-gray-600 font-medium">Page {page} / {Math.max(1, Math.ceil(products.filter(p => p.visible !== false && (selectedCategory === 'All' || p.category === selectedCategory) && ((p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()))).length / PAGE_SIZE))}</span>
+                  <button disabled={(page * PAGE_SIZE) >= products.filter(p => p.visible !== false && (selectedCategory === 'All' || p.category === selectedCategory) && ((p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()))).length} onClick={() => setPage((p) => p + 1)} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">Next</button>
                 </div>
               </>
             )}
           </section>
         </main>
 
-        <footer className="bg-white dark:bg-gray-900 mt-12 py-8 shadow-inner">
+        <footer className="bg-white mt-12 py-8 shadow-inner">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-col items-center gap-6">
               <div className="flex gap-6">
@@ -477,6 +579,53 @@ export default function App() {
             </div>
           </div>
         </footer>
+        {/* Product Detail Modal */}
+        {selectedProduct && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setSelectedProduct(null)}>
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="relative">
+                <button 
+                  onClick={() => setSelectedProduct(null)} 
+                  className="absolute top-4 right-4 bg-gray-900 text-white rounded-full p-2 shadow-lg hover:bg-gray-700 z-10"
+                  >
+                  <X size={20} />
+                </button>
+                <img 
+                  src={selectedProduct.image} 
+                  alt={selectedProduct.name} 
+                  className="w-full max-h-64 md:max-h-80 object-contain rounded-t-2xl bg-gray-100" 
+                />
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-2">
+                    {selectedProduct.category}
+                  </span>
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                    {selectedProduct.name}
+                  </h2>
+                </div>
+                
+                <p className="text-gray-700 text-sm leading-relaxed">
+                    {selectedProduct.description}
+                </p>
+                
+                
+                
+                <button 
+                  onClick={() => {
+                    trackClick(selectedProduct.id, selectedProduct.link);
+                    setSelectedProduct(null);
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
+                >
+                  Get Product <ExternalLink className="inline ml-2" size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <style>{`
           @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
@@ -498,16 +647,45 @@ export default function App() {
             <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <span className="text-white text-3xl font-bold">A</span>
             </div>
-            <h2 className="text-2xl font-bold">Affliora Admin</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Affliora Admin</h2>
             <p className="text-sm text-gray-600">Login with your admin email</p>
           </div>
 
-          <input value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="Email" className="w-full p-3 border rounded mb-3" />
-          <input value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} type="password" placeholder="Password" className="w-full p-3 border rounded mb-3" onKeyPress={(e) => e.key === "Enter" && handleAdminLogin()} />
-
+          <input 
+           value={adminEmail} 
+           onChange={(e) => setAdminEmail(e.target.value.trim())} 
+           placeholder="Email" 
+           className="w-full p-3 border rounded text-gray-900 bg-white" 
+           type="email"
+           autoComplete="email"
+           autoCapitalize="none"
+           autoCorrect="off"
+           spellCheck="false"
+          />
+          <div className="relative mb-3">
+            <input 
+            value={adminPassword} 
+            onChange={(e) => setAdminPassword(e.target.value.trim())} 
+            type={showPassword ? "text" : "password"} 
+            placeholder="Password" 
+            className="w-full p-3 border rounded text-gray-900 bg-white pr-12" 
+            onKeyPress={(e) => e.key === "Enter" && handleAdminLogin()} 
+            autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck="false"
+            />
+            <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900"
+            >
+           {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+           </button>
+          </div>
           <div className="flex gap-3">
-            <button onClick={handleAdminLogin} className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white p-3 rounded">Login</button>
-            <button onClick={() => (window.location.href = "/")} className="flex-1 border p-3 rounded">Public</button>
+           <button onClick={handleAdminLogin} className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white p-3 rounded font-medium">Login</button>
+           <button onClick={() => (window.location.href = "/")} className="flex-1 border border-gray-300 p-3 rounded flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-gray-900 font-medium hover:bg-gray-50 transition">Public</button>
           </div>
         </div>
       </div>
@@ -520,7 +698,7 @@ export default function App() {
       <header className="bg-white shadow p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold">Affliora Admin</h1>
+            <h1 className="text-xl font-bold text-gray-900">Affliora Admin</h1>
             <p className="text-sm text-gray-600">Manage products & view analytics</p>
           </div>
           <div className="flex items-center gap-3">
@@ -534,19 +712,19 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-4">
         {showStats && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="bg-white p-4 rounded shadow">Total Products: {products.length}</div>
-            <div className="bg-white p-4 rounded shadow">Total Clicks: {getTotalClicks()}</div>
-            <div className="bg-white p-4 rounded shadow">Visible: {products.filter((p) => p.visible !== false).length}</div>
+            <div className="bg-white p-4 rounded shadow text-gray-900 font-medium">Total Products: {products.length}</div>
+            <div className="bg-white p-4 rounded shadow text-gray-900 font-medium">Total Clicks: {getTotalClicks()}</div>
+            <div className="bg-white p-4 rounded shadow text-gray-900 font-medium">Visible: {products.filter((p) => p.visible !== false).length}</div>
 
             <div className="md:col-span-3 bg-white p-4 rounded shadow mt-4">
-              <h3 className="mb-3">Top Products</h3>
+               <h3 className="mb-3 text-gray-700 font-bold">Top Products</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {getTopProducts().map((p) => (
                   <div key={p.id} className="p-3 border rounded flex items-center gap-3">
                     <img src={p.image} className="w-12 h-12 object-cover rounded" alt="" />
                     <div>
-                      <div className="font-semibold">{p.name}</div>
-                      <div className="text-xs text-gray-500">{p.clicks || 0} clicks</div>
+                      <div className="font-semibold text-gray-900">{p.name}</div>
+                      <div className="text-xs text-gray-600">{p.clicks || 0} clicks</div>
                     </div>
                   </div>
                 ))}
@@ -560,41 +738,47 @@ export default function App() {
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-3">
-                <h3>{editingId ? "Edit" : "Add"} Product</h3>
+                <h3 className="text-xl font-bold text-gray-900">{editingId ? "Edit" : "Add"} Product</h3>
                 <button onClick={() => { setIsAdding(false); setEditingId(null); }}><X /></button>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="block mb-1">Image</label>
-                  {filePreview && <img src={filePreview} className="w-full h-40 object-cover rounded mb-2" alt="preview" />}
-                  <input type="file" accept="image/*" onChange={handleImageFile} />
-                  <input type="url" value={formData.image} onChange={(e) => { setFormData((f) => ({ ...f, image: e.target.value })); setFilePreview(e.target.value); }} placeholder="Or paste image URL" className="w-full p-2 border rounded mt-2" />
+                  <label className="block mb-1 text-gray-900 font-medium">Image URL</label>
+                  {formData.image && <img src={formData.image} className="w-full h-40 object-cover rounded mb-2" alt="preview" />}
+                  <input 
+                  type="url" 
+                  value={formData.image} 
+                  onChange={(e) => setFormData((f) => ({ ...f, image: e.target.value }))} 
+                  placeholder="Paste image URL (e.g., https://example.com/image.jpg)" 
+                  className="w-full p-3 border rounded text-gray-900 bg-white" 
+                  />
+                  <p className="text-xs text-gray-600 mt-1">Tip: Upload images to ImgBB, Imgur, or Cloudinary for free hosting</p>
                   {fieldErrors.image && <div className="text-red-500 text-sm mt-1">{fieldErrors.image}</div>}
                 </div>
 
-                <input value={formData.name} onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))} placeholder="Name" className="w-full p-3 border rounded" />
+                <input value={formData.name} onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))} placeholder="Name" className="w-full p-3 border rounded text-gray-900 bg-white" />
                 {fieldErrors.name && <div className="text-red-500 text-sm">{fieldErrors.name}</div>}
 
-                <input value={formData.slug} onChange={(e) => setFormData((f) => ({ ...f, slug: e.target.value }))} placeholder="Slug (auto-generated if blank)" className="w-full p-3 border rounded" />
+                <input value={formData.slug} onChange={(e) => setFormData((f) => ({ ...f, slug: e.target.value }))} placeholder="Slug (auto-generated if blank)" className="w-full p-3 border rounded text-gray-900 bg-white" />
 
-                <select value={formData.category} onChange={(e) => setFormData((f) => ({ ...f, category: e.target.value }))} className="w-full p-3 border rounded">
+                <select value={formData.category} onChange={(e) => setFormData((f) => ({ ...f, category: e.target.value }))} className="w-full p-3 border rounded text-gray-900 bg-white">
                   {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
 
-                <textarea value={formData.description} onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))} className="w-full p-3 border rounded" placeholder="Short description (2-3 lines)" rows={4} />
+                <textarea value={formData.description} onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))} className="w-full p-3 border rounded text-gray-900 bg-white" placeholder="Short description (2-3 lines)" rows={4} />
                 {fieldErrors.description && <div className="text-red-500 text-sm">{fieldErrors.description}</div>}
 
-                <input value={formData.link} onChange={(e) => setFormData((f) => ({ ...f, link: e.target.value }))} placeholder="Affiliate URL" className="w-full p-3 border rounded" />
+                <input value={formData.link} onChange={(e) => setFormData((f) => ({ ...f, link: e.target.value }))} placeholder="Affiliate URL" className="w-full p-3 border rounded text-gray-900 bg-white" />
                 {fieldErrors.link && <div className="text-red-500 text-sm">{fieldErrors.link}</div>}
 
                 <div className="flex gap-2 items-center">
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={formData.visible !== false} onChange={(e) => setFormData((f) => ({ ...f, visible: e.target.checked }))} /> Visible</label>
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={formData.featured || false} onChange={(e) => setFormData((f) => ({ ...f, featured: e.target.checked }))} /> Featured</label>
+                  <label className="flex items-center gap-2 text-gray-900 bg-white"><input type="checkbox" checked={formData.visible !== false} onChange={(e) => setFormData((f) => ({ ...f, visible: e.target.checked }))} /> Visible</label>
+                  <label className="flex items-center gap-2 text-gray-900 bg-white"><input type="checkbox" checked={formData.featured || false} onChange={(e) => setFormData((f) => ({ ...f, featured: e.target.checked }))} /> Featured</label>
                 </div>
 
                 <div className="flex gap-2">
-                  <button onClick={handleSubmit} disabled={uploadingImage} className="flex-1 bg-purple-600 text-white p-3 rounded">{editingId ? "Update" : "Add"}</button>
+                  <button onClick={handleSubmit} disabled={uploadingImage} className="flex-1 bg-purple-600 text-white p-3 rounded text-gray-900 bg-white">{editingId ? "Update" : "Add"}</button>
                   <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="flex-1 border p-3 rounded">Cancel</button>
                 </div>
               </div>
@@ -603,27 +787,78 @@ export default function App() {
         )}
 
         {/* Product list for admin */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {products.map((product) => (
-            <div key={product.id} className="bg-white p-3 rounded shadow relative">
-              {!product.visible && <div className="absolute left-0 top-0 bg-red-500 text-white px-2 py-1 text-xs rounded-br">HIDDEN</div>}
-              <img src={product.image} className="w-full h-40 object-cover rounded" alt={product.name} />
-              <h4 className="font-bold mt-2">{product.name}</h4>
-              <p className="text-sm text-gray-600">{product.category}</p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => handleEdit(product)} className="p-2 bg-blue-100 rounded"><Edit2 /></button>
-                <button onClick={() => handleDelete(product.id)} className="p-2 bg-red-100 rounded"><Trash2 /></button>
-                <a href={`/products/${product.slug || product.id}`} target="_blank" rel="noreferrer" className="ml-auto underline">Public</a>
-              </div>
-            </div>
-          ))}
+  <div key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden relative hover:shadow-lg transition">
+    {!product.visible && (
+      <div className="absolute left-0 top-0 bg-red-500 text-white px-3 py-1 text-xs font-semibold rounded-br-lg z-10">
+        HIDDEN
+      </div>
+    )}
+    {product.featured && (
+      <div className="absolute right-0 top-0 bg-purple-500 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg z-10">
+        FEATURED
+      </div>
+    )}
+    
+    <div className="flex flex-row gap-3 p-3">
+      <div className="flex-shrink-0">
+        <img 
+          src={product.image} 
+          className="w-24 h-24 md:w-28 md:h-28 object-cover rounded-lg" 
+          alt={product.name} 
+        />
+      </div>
+      
+      <div className="flex-1 flex flex-col gap-2">
+        <div>
+          <h4 className="font-bold text-base text-gray-900 line-clamp-2">{product.name}</h4>
+          <p className="text-xs text-gray-600 mt-1">
+            <span className="inline-block bg-gray-100 px-2 py-1 rounded">{product.category}</span>
+          </p>
+          {product.clicks !== undefined && (
+            <p className="text-xs text-gray-500 mt-1">
+              👁️ {product.clicks} clicks
+            </p>
+          )}
+        </div>
+        
+        <div className="flex gap-2 mt-auto">
+          <button 
+            onClick={() => handleEdit(product)} 
+            className="flex-1 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-1"
+          >
+            <Edit2 size={16} />
+            <span className="text-sm font-medium">Edit</span>
+          </button>
+          <button 
+            onClick={() => handleDelete(product.id)} 
+            className="flex-1 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-1"
+          >
+            <Trash2 size={16} />
+            <span className="text-sm font-medium">Delete</span>
+          </button>
+        </div>
+        
+        <a 
+          href={`/products/${product.slug || product.id}`} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="text-xs text-purple-600 hover:text-purple-700 underline text-center"
+        >
+          View Public Page
+        </a>
+      </div>
+    </div>
+  </div>
+))}
         </div>
 
         {/* activity logs preview */}
         <div className="mt-6 bg-white p-4 rounded shadow">
-          <h4 className="font-bold mb-2">Recent Activity</h4>
+          <h4 className="font-bold mb-2 text-gray-900">Recent Activity</h4>
           <ul className="space-y-2 max-h-40 overflow-auto">
-            {activityLogs.length === 0 && <li className="text-sm text-gray-500">No recent activity</li>}
+            {activityLogs.length === 0 && <li className="text-sm text-gray-700">No recent activity</li>}
             {activityLogs.map((a, i) => (
               <li key={i} className="text-sm">
                 <strong>{a.action}</strong> — {a.details}
@@ -634,7 +869,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="py-4 text-center">Affliora Admin</footer>
+      <footer className="py-4 text-center text-gray-900">Affliora Admin</footer>
     </div>
   );
 }
