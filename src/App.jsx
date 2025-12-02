@@ -493,45 +493,45 @@ useEffect(() => {
                 {filteredProducts.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredProducts.map((product) => (
-                      <article key={product.id} className="bg-gray-100 dark:bg-gray-200 rounded-xl overflow-hidden shadow">
-                        <div className="flex flex-row gap-2 p-3">
-                          {/* Left: Product Image */}
-                          <button
-                            onClick={() => openProductDetail(product)}
-                            className="flex-shrink-0 cursor-pointer"
-                          >
-                            <img 
-                             src={product.image} 
-                             alt={product.name} 
-                             className="w-28 h-28 md:w-32 md:h-32 object-contain rounded-md bg-gray-50" 
-                             loading="lazy"
-                             onError={(e) => e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af"%3ENo Image%3C/text%3E%3C/svg%3E'}
-                            />
-                          </button>
+                      <article key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
+  <div className="flex flex-row gap-1 p-3">
+    {/* Left: Product Image */}
+    <button
+      onClick={() => openProductDetail(product)}
+      className="flex-shrink-0 cursor-pointer focus:outline-none"
+    >
+      <img 
+        src={product.image} 
+        alt={product.name} 
+        className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-lg" 
+        loading="lazy"
+        onError={(e) => e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ffffff" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af"%3ENo Image%3C/text%3E%3C/svg%3E'}
+      />
+    </button>
 
-                          {/* Right: Content */}
-                          <div className="flex-1 flex flex-col gap-2">
-                            <button
-                              onClick={() => openProductDetail(product)}
-                              className="text-left focus:outline-none"
-                            >
-                              <h3 className="font-bold text-base line-clamp-2 text-gray-900">
-                                {product.name}
-                              </h3>
-                              <p className="text-sm text-gray-600 line-clamp-2 mt-1">
-                                {product.description}
-                              </p>
-                            </button>
-                            
-                            <button 
-                              onClick={() => trackClick(product.id, product.link)} 
-                              className="w-full bg-gradient-to-r from-purple-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all mt-auto transform hover:scale-105"
-                            >
-                              Get Product
-                            </button>
-                          </div>
-                        </div>
-                      </article>
+    {/* Right: Content */}
+    <div className="flex-1 flex flex-col gap-2">
+      <button
+        onClick={() => openProductDetail(product)}
+        className="text-left focus:outline-none"
+      >
+        <h3 className="font-bold text-base text-gray-900 line-clamp-2">
+          {product.name}
+        </h3>
+        <p className="text-sm text-gray-700 line-clamp-2 mt-2">
+          {product.description}
+        </p>
+      </button>
+      
+      <button 
+        onClick={() => trackClick(product.id, product.link)} 
+        className="w-full bg-gradient-to-r from-purple-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all mt-auto"
+      >
+        Get Product
+      </button>
+    </div>
+  </div>
+</article>
                     ))}
                   </div>
                 ) : (
