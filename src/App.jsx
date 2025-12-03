@@ -494,7 +494,7 @@ useEffect(() => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredProducts.map((product) => (
                       <article key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
-  <div className="flex flex-row gap-1 p-3">
+  <div className="flex flex-row gap-3 p-3">
     {/* Left: Product Image */}
     <button
       onClick={() => openProductDetail(product)}
