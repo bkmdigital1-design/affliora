@@ -1548,9 +1548,9 @@ Check out this product: https://yourdomain.com/#product-abc123
   </a>
   <button
   onClick={() => {
-    const link = `#product-${product.id}`;
+    const link = `${window.location.origin}/#product-${product.id}`;
     navigator.clipboard.writeText(link);
-    alert("Product link copied! 📋\n\nPaste this in your articles:\n" + link + "\n\nExample: Check out this " + link);
+    alert("Product link copied! 📋\n\nShare on social media:\n" + link + "\n\nFor articles, use: #product-" + product.id);
   }}
   className="flex-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-medium"
 >
@@ -1563,39 +1563,68 @@ Check out this product: https://yourdomain.com/#product-abc123
 ))}
         </div>
         {/* Articles Management */}
-        {articles.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Articles ({articles.length})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {articles.map((article) => (
-                <div key={article.id} className="bg-white p-4 rounded shadow">
-                  {article.image && <img src={article.image} className="w-full h-32 object-cover rounded mb-2" alt={article.title} />}
-                  <h4 className="font-bold text-gray-900">{article.title}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{article.category}</p>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{article.excerpt}</p>
-                  <div className="flex gap-2 mt-3">
-                   <button 
-                   onClick={() => {
-                   setArticleFormData({ ...article });
-                   setShowBlogModal(true);
-                 }} 
-                  className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                   >
-                 <Edit2 size={16} />
-                  </button>
-                   <button 
-                   onClick={() => handleDeleteArticle(article.id)} 
-                   className="p-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                 >
-                  <Trash2 size={16} />
-                  </button>
-                  {!article.published && <span className="text-xs text-red-500 ml-2">DRAFT</span>}
-                </div>
-                </div>
-              ))}
-            </div>
+{articles.length > 0 && (
+  <div className="mt-8">
+    <h3 className="text-xl font-bold text-gray-900 mb-4">Articles ({articles.length})</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {articles.map((article) => (
+        <div key={article.id} className="bg-white p-4 rounded shadow">
+          {article.image && <img src={article.image} className="w-full h-32 object-cover rounded mb-2" alt={article.title} />}
+          <h4 className="font-bold text-gray-900">{article.title}</h4>
+          <p className="text-sm text-gray-600 mt-1">{article.category}</p>
+          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{article.excerpt}</p>
+          
+          <div className="flex gap-2 mt-3">
+            <button 
+              onClick={() => {
+                setArticleFormData({ ...article });
+                setShowBlogModal(true);
+              }} 
+              className="flex-1 p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center justify-center gap-1"
+            >
+              <Edit2 size={16} />
+              <span className="text-xs">Edit</span>
+            </button>
+            <button 
+              onClick={() => handleDeleteArticle(article.id)} 
+              className="flex-1 p-2 bg-red-500 text-white rounded hover:bg-red-600 transition flex items-center justify-center gap-1"
+            >
+              <Trash2 size={16} />
+              <span className="text-xs">Delete</span>
+            </button>
           </div>
-        )}
+
+          <div className="flex gap-2 mt-2">
+            <a 
+              href={`#article-${article.id}`} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="flex-1 text-xs text-purple-600 hover:text-purple-700 underline text-center py-1"
+            >
+              View Article
+            </a>
+            <button
+  onClick={() => {
+    const link = `${window.location.origin}/#article-${article.id}`;
+    navigator.clipboard.writeText(link);
+    alert("Article link copied! 📋\n\nShare on social media:\n" + link);
+  }}
+  className="flex-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-medium"
+>
+  Copy Link
+</button>
+          </div>
+
+          {!article.published && (
+            <div className="mt-2 text-center">
+              <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">DRAFT</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
         {/* activity logs preview */}
         <div className="mt-6 bg-white p-4 rounded shadow">
