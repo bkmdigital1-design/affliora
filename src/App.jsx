@@ -1,4 +1,4 @@
-// App.jsx (replace your current file contents with this)
+
 // Required packages: firebase, lucide-react, chart.js (optional if you want charts), tailwindcss for styles used
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -52,6 +52,12 @@ const ProductSkeleton = () => (
     </div>
   </div>
 );
+
+//added helper render article
+const renderArticleContent = (content) => {
+  // Convert markdown links: [text](url) to HTML links
+  return content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-600 underline hover:text-purple-700" target="_blank">$1</a>');
+};
 // Add this helper function BEFORE "export default function App() {"
 const updateMetaTags = ({ title, description, image, url }) => {
   const metaTitle = document.querySelector('meta[property="og:title"]');
@@ -85,8 +91,13 @@ const updateMetaTags = ({ title, description, image, url }) => {
 // ---------- Main Component ----------
 export default function App() {
   const isAdminRoute = typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.hash === "#admin");
-
-
+  const isArticleRoute = typeof window !== "undefined" && window.location.hash.startsWith("#article-");
+  const articleIdFromHash = isArticleRoute ? window.location.hash.replace("#article-", "") : null;
+  // Added these two lines:
+  const isProductRoute = typeof window !== "undefined" && window.location.hash.startsWith("#product-") && !isAdminRoute;
+  const productIdFromHash = isProductRoute ? window.location.hash.replace("#product-", "") : null;
+  // route detection
+  const isArticlesListRoute = typeof window !== "undefined" && window.location.hash === "#articles" && !isAdminRoute;
   // auth
   const [user, setUser] = useState(null);
   const [adminEmail, setAdminEmail] = useState("");
@@ -97,6 +108,15 @@ export default function App() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  //newsletter state
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState(""); // success, error, or empty
+
+  //blogs state
+  const [articles, setArticles] = useState([]);
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
   // admin UI
   const [isAdding, setIsAdding] = useState(false);
@@ -121,11 +141,24 @@ export default function App() {
   const [filePreview, setFilePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  //article form 
+  const [articleFormData, setArticleFormData] = useState({
+    title: "",
+    content: "",
+    excerpt: "",
+    image: "",
+    category: "Tips & Guides",
+    published: true
+ });
+
   // filters + pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
+  // added article pagination
+  const [articlePage, setArticlePage] = useState(1);
+  const ARTICLES_PER_PAGE = 9; // 3 rows of 3 articles
 
   // chart refs (if you add charts later)
   const CATEGORIES = ["All", "Digital Products", "Courses", "E-books", "Tools", "Templates", "Services", "Other"];
@@ -149,7 +182,34 @@ export default function App() {
   // load products
   useEffect(() => {
     loadProducts();
+    loadArticles();
   }, []);
+  
+  //load articles when articleIdFromHash changes
+  useEffect(() => {
+  // When articles load and we have an article ID in the hash, set the selected article
+  if (articleIdFromHash && articles.length > 0 && !selectedArticle) {
+    const article = articles.find(a => a.id === articleIdFromHash);
+    if (article) {
+      setSelectedArticle(article);
+    }
+  }
+}, [articles, articleIdFromHash, selectedArticle]);
+
+//added user effect on articles
+useEffect(() => {
+  // When on article route, ensure articles are loaded
+  if (isArticleRoute && articles.length === 0 && !loading) {
+    console.log("Article route active, loading articles...");
+    loadArticles();
+  }
+  
+  if (isArticleRoute && articles.length > 0) {
+    console.log("Articles loaded successfully:", articles.length);
+    const article = articles.find(a => a.id === articleIdFromHash);
+    console.log("Found article:", article ? article.title : "NOT FOUND");
+  }
+}, [isArticleRoute]); // Only run when route changes, not when articles change
 
   // filter + paginate whenever inputs change
   useEffect(() => {
@@ -191,7 +251,20 @@ useEffect(() => {
       setLoading(false);
     }
   };
-
+  //---------Load articles---------
+  const loadArticles = async () => {
+  console.log("Loading articles from Firestore...");
+  try {
+    const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    console.log("Articles fetched:", list.length);
+    setArticles(list);
+  } catch (err) {
+    console.error("loadArticles error:", err);
+    setArticles([]);
+  }
+};
   // ---------- Filtering + Pagination ----------
   const applyFilters = () => {
     let visible = products.filter((p) => p.visible !== false);
@@ -409,7 +482,396 @@ useEffect(() => {
   setSelectedProduct(product);
   logView(product.id);
 };
+//newsletter submission function
+const handleNewsletterSignup = async (e) => {
+  e.preventDefault();
+  // Validate email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(newsletterEmail)) {
+    setNewsletterStatus("error");
+    alert("Please enter a valid email address");
+    return;
+  }
+  
+  try {
+    await addDoc(collection(db, "newsletter"), {
+      email: newsletterEmail.trim().toLowerCase(),
+      subscribedAt: serverTimestamp(),
+      source: "website"
+    });
+    
+    setNewsletterStatus("success");
+    setNewsletterEmail("");
+    alert("Thanks for subscribing! 🎉");
+    
+    // Reset status after 3 seconds
+    setTimeout(() => setNewsletterStatus(""), 3000);
+  } catch (err) {
+    console.error("Newsletter signup error:", err);
+    setNewsletterStatus("error");
+    alert("Subscription failed. Please try again.");
+  }
+};
+  //article submit function
+  const handleArticleSubmit = async () => {
+  if (!articleFormData.title || !articleFormData.content || !articleFormData.excerpt) {
+    alert("Please fill in all required fields");
+    return;
+  }
+  
+  try {
+    const payload = {
+      title: articleFormData.title,
+      content: articleFormData.content,
+      excerpt: articleFormData.excerpt,
+      image: articleFormData.image,
+      category: articleFormData.category,
+      published: articleFormData.published,
+      slug: generateSlug(articleFormData.title)
+    };
+    
+    if (articleFormData.id) {
+      // Editing existing article
+      await updateDoc(doc(db, "articles", articleFormData.id), payload);
+      setArticles((prev) => prev.map((a) => (a.id === articleFormData.id ? { ...a, ...payload } : a)));
+      alert("Article updated successfully! ✅");
+    } else {
+      // Creating new article
+      payload.createdAt = serverTimestamp();
+      payload.author = user?.email || "admin";
+      
+      const docRef = await addDoc(collection(db, "articles"), payload);
+      setArticles((prev) => [{ id: docRef.id, ...payload }, ...prev]);
+      alert("Article published successfully! 🎉");
+    }
+    
+    setArticleFormData({
+      title: "",
+      content: "",
+      excerpt: "",
+      image: "",
+      category: "Tips & Guides",
+      published: true
+    });
+    
+    setShowBlogModal(false);
+  } catch (err) {
+    console.error("save article", err);
+    alert("Error saving article");
+  }
+};
+const handleDeleteArticle = async (id) => {
+  if (!confirm("Delete this article?")) return;
+  try {
+    await deleteDoc(doc(db, "articles", id));
+    setArticles((prev) => prev.filter((a) => a.id !== id));
+  } catch (err) {
+    console.error("delete article", err);
+    alert("Delete failed");
+  }
+};
 
+// ---------- ARTICLE PAGE ----------
+if (isArticleRoute) {
+  console.log("Rendering article page, articles count:", articles.length);
+  
+  const currentArticle = articles.find(a => a.id === articleIdFromHash);
+  console.log("Current article found:", currentArticle);
+
+  // Show loading while articles are being fetched
+  if (articles.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading article...</p>
+          <p className="text-gray-500 text-sm mt-2">Article ID: {articleIdFromHash}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show not found if article doesn't exist
+  if (!currentArticle) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Article Not Found</h2>
+          <p className="text-gray-600 mb-2">The article you're looking for doesn't exist.</p>
+          <p className="text-gray-500 text-sm mb-6">ID: {articleIdFromHash}</p>
+          <a 
+            href="/" 
+            className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
+          >
+            ← Back to Home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Show the article
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+      <header className="bg-white shadow-md sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+              <span className="text-white text-xl font-bold">A</span>
+            </div>
+            <span className="font-bold text-gray-900">Affliora</span>
+          </a>
+          <a href="/" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+            ← Back to Home
+          </a>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <article className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {currentArticle.image && (
+            <img 
+              src={currentArticle.image} 
+              alt={currentArticle.title} 
+              className="w-full h-64 md:h-96 object-cover" 
+            />
+          )}
+          
+          <div className="p-6 md:p-10">
+            <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-4">
+              {currentArticle.category}
+            </span>
+            
+            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+              {currentArticle.title}
+            </h1>
+            
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-8 pb-8 border-b">
+              <span>By {currentArticle.author || "Admin"}</span>
+              <span>•</span>
+              <span>
+                {currentArticle.createdAt?.seconds 
+                  ? new Date(currentArticle.createdAt.seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                }
+              </span>
+            </div>
+
+          <div 
+  className="prose prose-lg max-w-none text-gray-700 leading-relaxed article-content"
+  dangerouslySetInnerHTML={{ 
+    __html: currentArticle.content
+      .replace(/\n/g, '<br/>')
+      .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-purple-600 underline hover:text-purple-700">$1</a>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+  }}
+/>
+
+            <div className="mt-12 pt-8 border-t">
+              <a 
+                href="/" 
+                className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
+              >
+                ← Back to Home
+              </a>
+            </div>
+          </div>
+        </article>
+      </main>
+
+      <footer className="bg-white mt-12 py-8 shadow-inner">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-gray-600">© 2025 Affliora. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+  // ---------- PRODUCT DETAIL PAGE ----------
+if (isProductRoute) {
+  console.log("Rendering product page, products count:", products.length);
+  
+  const currentProduct = products.find(p => p.id === productIdFromHash);
+  console.log("Current product found:", currentProduct);
+
+  // Show loading while products are being fetched
+  if (products.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show not found if product doesn't exist
+  if (!currentProduct) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Product Not Found</h2>
+          <p className="text-gray-600 mb-2">The product you're looking for doesn't exist.</p>
+          <a 
+            href="/" 
+            className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
+          >
+            ← Back to Home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Log view
+  logView(currentProduct.id);
+
+  // Show the product detail page
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+      <header className="bg-white shadow-md sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+              <span className="text-white text-xl font-bold">A</span>
+            </div>
+            <span className="font-bold text-gray-900">Affliora</span>
+          </a>
+          <a href="/" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+            ← Back to Home
+          </a>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="grid md:grid-cols-2 gap-8 p-6 md:p-10">
+            {/* Left: Product Image */}
+            <div className="flex items-center justify-center bg-gray-50 rounded-xl p-6">
+              <img 
+                src={currentProduct.image} 
+                alt={currentProduct.name} 
+                className="w-full max-h-96 object-contain rounded-lg" 
+              />
+            </div>
+            
+            {/* Right: Product Details */}
+            <div className="flex flex-col">
+              <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-4 w-fit">
+                {currentProduct.category}
+              </span>
+              
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                {currentProduct.name}
+              </h1>
+              
+              <p className="text-gray-700 text-base leading-relaxed mb-6 flex-1">
+                {currentProduct.description}
+              </p>
+
+              {currentProduct.clicks !== undefined && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 pb-6 border-b">
+                  <TrendingUp size={16} />
+                  <span>{currentProduct.clicks} people viewed this product</span>
+                </div>
+              )}
+              
+              <button 
+                onClick={() => trackClick(currentProduct.id, currentProduct.link)}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                Get Product <ExternalLink size={20} />
+              </button>
+
+              <p className="text-sm text-gray-500 text-center mt-4">
+                This is an affiliate link. We may earn a commission at no extra cost to you.
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer className="bg-white mt-12 py-8 shadow-inner">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-gray-600">© 2025 Affliora. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+  // ---------- ARTICLES LIST PAGE ----------
+if (isArticlesListRoute) {
+  const publishedArticles = articles.filter(a => a.published !== false);
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+      <header className="bg-white shadow-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+              <span className="text-white text-xl font-bold">A</span>
+            </div>
+            <span className="font-bold text-gray-900">Affliora</span>
+          </a>
+          <a href="/" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+            ← Back to Home
+          </a>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">All Articles</h1>
+          <p className="text-lg text-gray-600">{publishedArticles.length} articles on tips, guides, and product reviews</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {publishedArticles.map((article) => (
+            <article 
+              key={article.id} 
+              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
+            >
+              {article.image && (
+                <img src={article.image} alt={article.title} className="w-full h-48 object-cover" />
+              )}
+              <div className="p-5">
+                <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium mb-3">
+                  {article.category}
+                </span>
+                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
+                  {article.title}
+                </h3>
+                <p className="text-sm text-gray-600 line-clamp-3 mb-4">
+                  {article.excerpt}
+                </p>
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                  <span>By {article.author || "Admin"}</span>
+                  <span>{new Date(article.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</span>
+                </div>
+                <a 
+                  href={`#article-${article.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center bg-purple-600 text-white py-2 rounded-lg font-medium hover:bg-purple-700 transition"
+                >
+                  Read Article →
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </main>
+
+      <footer className="bg-white mt-12 py-8 shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-600">© 2025 Affliora. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
   // ---------- UI: Public site (no admin link in header) ----------
   if (!isAdminRoute) {
     return (
@@ -525,7 +987,7 @@ useEffect(() => {
       
       <button 
         onClick={() => trackClick(product.id, product.link)} 
-        className="w-full bg-gradient-to-r from-purple-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all mt-auto"
+        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all mt-auto"
       >
         Get Product
       </button>
@@ -552,8 +1014,117 @@ useEffect(() => {
               </>
             )}
           </section>
-        </main>
+          {/* Newsletter Section */}
+        <section className="mt-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-8 md:p-12 text-white shadow-xl">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-2xl md:text-4xl font-bold mb-4">
+              Stay Updated with the Best Products
+            </h2>
+            <p className="text-lg mb-6 text-purple-100">
+              Get weekly recommendations of top digital products, exclusive deals, and insider tips delivered to your inbox.
+            </p>
+            
+            <form onSubmit={handleNewsletterSignup} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+              <input
+                type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="flex-1 px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
+                required
+              />
+              <button
+                type="submit"
+                className="px-6 py-3 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-all shadow-lg"
+              >
+                Subscribe
+              </button>
+            </form>
+            
+            {newsletterStatus === "success" && (
+              <p className="mt-4 text-green-200 font-medium">✓ Successfully subscribed!</p>
+            )}
+            
+            <p className="mt-4 text-sm text-purple-200">
+              No spam. Unsubscribe anytime. We respect your privacy.
+            </p>
+          </div>
+        </section>
+        {/* Blog/Articles Section */}
+       {/* Blog/Articles Section */}
+{articles.filter(a => a.published !== false).length > 0 && (
+  <section className="mt-16">
+    <div className="flex items-center justify-between mb-6">
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900">Latest Articles</h2>
+        <p className="text-gray-600 mt-1">Tips, guides, and product reviews</p>
+      </div>
+      <p className="text-gray-600 font-medium">
+        {articles.filter(a => a.published !== false).length} articles
+      </p>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {articles
+        .filter(a => a.published !== false)
+        .slice((articlePage - 1) * ARTICLES_PER_PAGE, articlePage * ARTICLES_PER_PAGE)
+        .map((article) => (
+        <article 
+          key={article.id} 
+          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer"
+        >
+          {article.image && (
+            <img src={article.image} alt={article.title} className="w-full h-48 object-cover" />
+          )}
+          <div className="p-5">
+            <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium mb-3">
+              {article.category}
+            </span>
+            <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
+              {article.title}
+            </h3>
+            <p className="text-sm text-gray-600 line-clamp-3">
+              {article.excerpt}
+            </p>
+            <a 
+              href={`#article-${article.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-block text-purple-600 font-medium text-sm hover:text-purple-700"
+            >
+              Read More →
+            </a>
+          </div>
+        </article>
+      ))}
+    </div>
 
+    {/* Article Pagination */}
+    {articles.filter(a => a.published !== false).length > ARTICLES_PER_PAGE && (
+      <div className="mt-8 flex items-center justify-center gap-3">
+        <button 
+          disabled={articlePage <= 1} 
+          onClick={() => setArticlePage(p => Math.max(1, p - 1))} 
+          className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          Prev
+        </button>
+        <span className="text-gray-600 font-medium">
+          Page {articlePage} / {Math.ceil(articles.filter(a => a.published !== false).length / ARTICLES_PER_PAGE)}
+        </span>
+        <button 
+          disabled={articlePage * ARTICLES_PER_PAGE >= articles.filter(a => a.published !== false).length} 
+          onClick={() => setArticlePage(p => p + 1)} 
+          className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          Next
+        </button>
+      </div>
+    )}
+  </section>
+)}
+        </main>
+          
         <footer className="bg-white mt-12 py-8 shadow-inner">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-col items-center gap-6">
@@ -622,16 +1193,42 @@ useEffect(() => {
                 >
                   Get Product <ExternalLink className="inline ml-2" size={20} />
                 </button>
+                {/* Article Reading Modal */}
+
               </div>
             </div>
           </div>
         )}
-
+  
         <style>{`
           @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
           .animate-shimmer { animation: shimmer 1.5s infinite; background-size: 200% 100%; }
           .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
           .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+          /* Article content styling */
+  .article-content strong {
+    font-weight: 700;
+    color: #1f2937;
+  }
+  
+  .article-content em {
+    font-style: italic;
+    color: #4b5563;
+  }
+  
+  .article-content a {
+    color: #7c3aed;
+    text-decoration: underline;
+    font-weight: 500;
+  }
+  
+  .article-content a:hover {
+    color: #6d28d9;
+  }
+
+  .article-content p {
+    margin-bottom: 1rem;
+  }
         `}</style>
       </div>
     );
@@ -691,7 +1288,7 @@ useEffect(() => {
       </div>
     );
   }
-
+  
   // ---------- ADMIN DASHBOARD (when logged in) ----------
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
@@ -703,6 +1300,7 @@ useEffect(() => {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setShowStats((s) => !s)} className="px-3 py-2 bg-purple-600 text-white rounded">Stats</button>
+            <button onClick={() => { setShowBlogModal(true); setArticleFormData({ title: "", content: "", excerpt: "", image: "", category: "Tips & Guides", published: true }); }} className="px-3 py-2 bg-green-600 text-white rounded">Add Article</button>
             <button onClick={() => { setIsAdding(true); setEditingId(null); }} className="px-3 py-2 bg-blue-600 text-white rounded">Add Product</button>
             <button onClick={handleAdminLogout} className="px-3 py-2 bg-red-500 text-white rounded">Logout</button>
           </div>
@@ -785,7 +1383,102 @@ useEffect(() => {
             </div>
           </div>
         )}
+        {/* Add/Edit Article Modal */}
+        {showBlogModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {articleFormData.id ? "Edit" : "Add"} Article
+                </h3>
+                <button onClick={() => setShowBlogModal(false)}><X /></button>
+              </div>
 
+              <div className="space-y-3">
+                <input 
+                  value={articleFormData.title} 
+                  onChange={(e) => setArticleFormData((f) => ({ ...f, title: e.target.value }))} 
+                  placeholder="Article Title" 
+                  className="w-full p-3 border rounded text-gray-900 bg-white" 
+                />
+                
+                <input 
+                  value={articleFormData.image} 
+                  onChange={(e) => setArticleFormData((f) => ({ ...f, image: e.target.value }))} 
+                  placeholder="Image URL (optional)" 
+                  className="w-full p-3 border rounded text-gray-900 bg-white" 
+                />
+                
+                <select 
+                  value={articleFormData.category} 
+                  onChange={(e) => setArticleFormData((f) => ({ ...f, category: e.target.value }))} 
+                  className="w-full p-3 border rounded text-gray-900 bg-white"
+                >
+                  <option>Tips & Guides</option>
+                  <option>Product Reviews</option>
+                  <option>How-To</option>
+                  <option>News & Updates</option>
+                  <option>Case Studies</option>
+                </select>
+                
+                <textarea 
+                  value={articleFormData.excerpt} 
+                  onChange={(e) => setArticleFormData((f) => ({ ...f, excerpt: e.target.value }))} 
+                  placeholder="Short excerpt (2-3 sentences)" 
+                  className="w-full p-3 border rounded text-gray-900 bg-white" 
+                  rows={3}
+                />
+                
+                <div>
+  <label className="block mb-1 text-gray-900 font-medium">Article Content</label>
+  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2 text-xs">
+    <p className="font-semibold text-purple-900 mb-1">📝 Formatting Tips:</p>
+    <ul className="text-purple-800 space-y-1">
+      <li><strong>**Bold text**</strong> → <strong>Bold text</strong></li>
+      <li><em>*Italic text*</em> → <em>Italic text</em></li>
+      <li>Links: Just paste URLs (https://example.com)</li>
+      <li>Product links: Paste product URLs from "Copy Link"</li>
+    </ul>
+  </div>
+  <textarea 
+    value={articleFormData.content} 
+    onChange={(e) => setArticleFormData((f) => ({ ...f, content: e.target.value }))} 
+    placeholder="Full article content...
+
+Example:
+**Introduction**
+This is bold text with a link: https://example.com
+
+*Key Points*
+- Point 1
+- Point 2
+
+Check out this product: https://yourdomain.com/#product-abc123
+    " 
+    className="w-full p-3 border rounded text-gray-900 bg-white font-mono text-sm" 
+    rows={16}
+  />
+</div>
+                
+                <label className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    checked={articleFormData.published !== false} 
+                    onChange={(e) => setArticleFormData((f) => ({ ...f, published: e.target.checked }))} 
+                  />
+                  <span className="text-gray-900">Published</span>
+                </label>
+
+                <div className="flex gap-2">
+                  <button onClick={handleArticleSubmit} className="flex-1 bg-green-600 text-white p-3 rounded">
+                    {articleFormData.id ? "Update Article" : "Publish Article"}
+                  </button>
+                  <button onClick={() => setShowBlogModal(false)} className="flex-1 border p-3 rounded text-gray-900">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Product list for admin */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {products.map((product) => (
@@ -824,35 +1517,81 @@ useEffect(() => {
         </div>
         
         <div className="flex gap-2 mt-auto">
-          <button 
-            onClick={() => handleEdit(product)} 
-            className="flex-1 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-1"
-          >
-            <Edit2 size={16} />
-            <span className="text-sm font-medium">Edit</span>
-          </button>
-          <button 
-            onClick={() => handleDelete(product.id)} 
-            className="flex-1 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-1"
-          >
-            <Trash2 size={16} />
-            <span className="text-sm font-medium">Delete</span>
-          </button>
-        </div>
-        
-        <a 
-          href={`/products/${product.slug || product.id}`} 
-          target="_blank" 
-          rel="noreferrer" 
-          className="text-xs text-purple-600 hover:text-purple-700 underline text-center"
-        >
-          View Public Page
-        </a>
+  <button 
+    onClick={() => handleEdit(product)} 
+    className="flex-1 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-1"
+  >
+    <Edit2 size={16} />
+    <span className="text-sm font-medium">Edit</span>
+  </button>
+  <button 
+    onClick={() => handleDelete(product.id)} 
+    className="flex-1 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-1"
+  >
+    <Trash2 size={16} />
+    <span className="text-sm font-medium">Delete</span>
+  </button>
+</div>
+
+<div className="flex gap-2 mt-2">
+  <a 
+    href={`#product-${product.id}`} 
+    target="_blank" 
+    rel="noreferrer" 
+    className="flex-1 text-xs text-purple-600 hover:text-purple-700 underline text-center"
+  >
+    View Page
+  </a>
+  <button
+    onClick={() => {
+      const link = `${window.location.origin}/#product-${product.id}`;
+      navigator.clipboard.writeText(link);
+      alert("Product link copied! 📋\n\nPaste this in your articles:\n" + link);
+    }}
+    className="flex-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-medium"
+  >
+    Copy Link
+  </button>
+</div>
       </div>
     </div>
   </div>
 ))}
         </div>
+        {/* Articles Management */}
+        {articles.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Articles ({articles.length})</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {articles.map((article) => (
+                <div key={article.id} className="bg-white p-4 rounded shadow">
+                  {article.image && <img src={article.image} className="w-full h-32 object-cover rounded mb-2" alt={article.title} />}
+                  <h4 className="font-bold text-gray-900">{article.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{article.category}</p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{article.excerpt}</p>
+                  <div className="flex gap-2 mt-3">
+                   <button 
+                   onClick={() => {
+                   setArticleFormData({ ...article });
+                   setShowBlogModal(true);
+                 }} 
+                  className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                   >
+                 <Edit2 size={16} />
+                  </button>
+                   <button 
+                   onClick={() => handleDeleteArticle(article.id)} 
+                   className="p-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                 >
+                  <Trash2 size={16} />
+                  </button>
+                  {!article.published && <span className="text-xs text-red-500 ml-2">DRAFT</span>}
+                </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* activity logs preview */}
         <div className="mt-6 bg-white p-4 rounded shadow">
