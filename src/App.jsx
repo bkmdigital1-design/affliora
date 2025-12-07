@@ -657,14 +657,18 @@ if (isArticleRoute) {
               </span>
             </div>
 
-          <div 
+        <div 
   className="prose prose-lg max-w-none text-gray-700 leading-relaxed article-content"
   dangerouslySetInnerHTML={{ 
     __html: currentArticle.content
       .replace(/\n/g, '<br/>')
-      .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-purple-600 underline hover:text-purple-700">$1</a>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Simple hash link replacement
+      .replace(/(#product-[a-zA-Z0-9]+)/g, '<a href="$1" target="_blank" class="text-purple-600 underline hover:text-purple-700 font-semibold">View Product →</a>')
+      .replace(/(#article-[a-zA-Z0-9]+)/g, '<a href="$1" target="_blank" class="text-purple-600 underline hover:text-purple-700 font-semibold">Read Article →</a>')
+      // URLs
+      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-purple-600 underline hover:text-purple-700">$1</a>')
   }}
 />
 
@@ -1543,15 +1547,15 @@ Check out this product: https://yourdomain.com/#product-abc123
     View Page
   </a>
   <button
-    onClick={() => {
-      const link = `${window.location.origin}/#product-${product.id}`;
-      navigator.clipboard.writeText(link);
-      alert("Product link copied! 📋\n\nPaste this in your articles:\n" + link);
-    }}
-    className="flex-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-medium"
-  >
-    Copy Link
-  </button>
+  onClick={() => {
+    const link = `#product-${product.id}`;
+    navigator.clipboard.writeText(link);
+    alert("Product link copied! 📋\n\nPaste this in your articles:\n" + link + "\n\nExample: Check out this " + link);
+  }}
+  className="flex-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-medium"
+>
+  Copy Link
+</button>
 </div>
       </div>
     </div>
