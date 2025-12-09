@@ -161,7 +161,7 @@ export default function App() {
   const ARTICLES_PER_PAGE = 9; // 3 rows of 3 articles
 
   // chart refs (if you add charts later)
-  const CATEGORIES = ["All", "Digital Products", "Courses", "E-books", "Tools", "Templates", "Services", "Other"];
+  const CATEGORIES = ["All", "Content Creation & Editing", "AI Tools & Automation", "Digital Skills & Freelancing", "Productivity & Planning", "Online Business & Money Making", "Other"];
 
   const SOCIAL_LINKS = {
     tiktok: "https://tiktok.com/@affliora_official",
