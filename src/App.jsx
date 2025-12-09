@@ -129,15 +129,18 @@ export default function App() {
 
   // form
   const [formData, setFormData] = useState({
-    name: "",
-    image: "", // either url or uploaded downloadURL
-    description: "",
-    link: "",
-    category: "Digital Products",
-    visible: true,
-    featured: false,
-    slug: ""
-  });
+  name: "",
+  image: "",
+  description: "",
+  link: "",
+  category: "Digital Products",
+  visible: true,
+  featured: false,
+  slug: "",
+  platform: "External", // New field
+  price: "", // New field
+  currency: "USD" // New field
+});
   const [filePreview, setFilePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -162,7 +165,40 @@ export default function App() {
 
   // chart refs (if you add charts later)
   const CATEGORIES = ["All", "Content Creation & Editing", "AI Tools & Automation", "Digital Skills & Freelancing", "Productivity & Planning", "Online Business & Money Making", "Other"];
+  // Add these new constants:
+const PLATFORMS = [
+  "External",
+  "Selar",
+  "Gumroad", 
+  "Udemy",
+  "Teachable",
+  "Amazon",
+  "Etsy",
+  "Shopify",
+  "Payhip",
+  "Lemon Squeezy",
+  "Paddle",
+  "Stripe",
+  "Other"
+];
 
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "KES", symbol: "KSh", name: "Kenyan Shilling" },
+  { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
+  { code: "ZAR", symbol: "R", name: "South African Rand" },
+  { code: "GHS", symbol: "₵", name: "Ghanaian Cedi" },
+  { code: "INR", symbol: "₹", name: "Indian Rupee" },
+  { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+  { code: "CNY", symbol: "¥", name: "Chinese Yuan" },
+  { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
+  { code: "AUD", symbol: "A$", name: "Australian Dollar" },
+  { code: "BRL", symbol: "R$", name: "Brazilian Real" },
+  { code: "MXN", symbol: "$", name: "Mexican Peso" },
+  { code: "AED", symbol: "د.إ", name: "UAE Dirham" }
+];
   const SOCIAL_LINKS = {
     tiktok: "https://tiktok.com/@affliora_official",
     instagram: "https://instagram.com/affliora_official",
@@ -761,38 +797,61 @@ if (isProductRoute) {
               />
             </div>
             
-            {/* Right: Product Details */}
-            <div className="flex flex-col">
-              <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-4 w-fit">
-                {currentProduct.category}
-              </span>
-              
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                {currentProduct.name}
-              </h1>
-              
-              <p className="text-gray-700 text-base leading-relaxed mb-6 flex-1">
-                {currentProduct.description}
-              </p>
+           {/* Right: Product Details */}
+<div className="flex flex-col">
+  <div className="flex items-center justify-between mb-4">
+    <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+      {currentProduct.category}
+    </span>
+    {currentProduct.platform && currentProduct.platform !== "External" && (
+      <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+        {currentProduct.platform}
+      </span>
+    )}
+  </div>
+  
+  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+    {currentProduct.name}
+  </h1>
+  
+  {currentProduct.price && (
+    <div className="bg-purple-50 border-l-4 border-purple-600 rounded-lg p-4 mb-6">
+      <div className="text-sm text-purple-700 mb-1">Price</div>
+      <div className="text-4xl font-bold text-purple-900">
+        {CURRENCIES.find(c => c.code === (currentProduct.currency || "USD"))?.symbol || "$"}
+        {currentProduct.price}
+      </div>
+      <div className="text-xs text-purple-600 mt-1">
+        {CURRENCIES.find(c => c.code === (currentProduct.currency || "USD"))?.name || "US Dollar"}
+      </div>
+    </div>
+  )}
+  
+  <p className="text-gray-700 text-base leading-relaxed mb-6 flex-1">
+    {currentProduct.description}
+  </p>
 
-              {currentProduct.clicks !== undefined && (
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 pb-6 border-b">
-                  <TrendingUp size={16} />
-                  <span>{currentProduct.clicks} people viewed this product</span>
-                </div>
-              )}
-              
-              <button 
-                onClick={() => trackClick(currentProduct.id, currentProduct.link)}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-              >
-                Get Product <ExternalLink size={20} />
-              </button>
+  {currentProduct.clicks !== undefined && (
+    <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 pb-6 border-b">
+      <TrendingUp size={16} />
+      <span>{currentProduct.clicks} people viewed this product</span>
+    </div>
+  )}
+  
+  <button 
+    onClick={() => trackClick(currentProduct.id, currentProduct.link)}
+    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+  >
+    {currentProduct.platform && currentProduct.platform !== "External" 
+      ? `Get from ${currentProduct.platform}` 
+      : "Get Product"}
+    <ExternalLink size={20} />
+  </button>
 
-              <p className="text-sm text-gray-500 text-center mt-4">
-                This is an affiliate link. We may earn a commission at no extra cost to you.
-              </p>
-            </div>
+  <p className="text-sm text-gray-500 text-center mt-4">
+    This is an affiliate link. We may earn a commission at no extra cost to you.
+  </p>
+</div>
           </div>
         </div>
       </main>
@@ -988,13 +1047,32 @@ if (isArticlesListRoute) {
           {product.description}
         </p>
       </button>
-      
-      <button 
-        onClick={() => trackClick(product.id, product.link)} 
-        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all mt-auto"
-      >
-        Get Product
-      </button>
+      {/* price and button section */}
+      <div className="flex flex-col gap-2 mt-auto">
+  {/* Price display */}
+  {product.price && (
+    <div className="flex items-center justify-between text-sm">
+      <span className="font-bold text-gray-900 text-lg">
+        {CURRENCIES.find(c => c.code === (product.currency || "USD"))?.symbol || "$"}
+        {product.price}
+      </span>
+      {product.platform && product.platform !== "External" && (
+        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+          {product.platform}
+        </span>
+      )}
+    </div>
+  )}
+  
+  <button 
+    onClick={() => trackClick(product.id, product.link)} 
+    className="w-full bg-gradient-to-r from-purple-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:from-purple-700 hover:to-purple-700 hover:shadow-lg transition-all"
+  >
+    {product.platform && product.platform !== "External" 
+      ? `Get from ${product.platform}` 
+      : "Get Product"}
+  </button>
+</div>
     </div>
   </div>
 </article>
@@ -1172,36 +1250,58 @@ if (isArticlesListRoute) {
                 />
               </div>
               
-              <div className="p-6 space-y-4">
-                <div>
-                  <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-2">
-                    {selectedProduct.category}
-                  </span>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                    {selectedProduct.name}
-                  </h2>
-                </div>
-                
-                <p className="text-gray-700 text-sm leading-relaxed">
-                    {selectedProduct.description}
-                </p>
-                
-                
-                
-                <button 
-                  onClick={() => {
-                    trackClick(selectedProduct.id, selectedProduct.link);
-                    setSelectedProduct(null);
-                  }}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
-                >
-                  Get Product <ExternalLink className="inline ml-2" size={20} />
-                </button>
+             <div className="p-6 space-y-4">
+  <div>
+    <div className="flex items-center justify-between mb-2">
+      <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+        {selectedProduct.category}
+      </span>
+      {selectedProduct.platform && selectedProduct.platform !== "External" && (
+        <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+          Available on {selectedProduct.platform}
+        </span>
+      )}
+    </div>
+    <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+      {selectedProduct.name}
+    </h2>
+  </div>
+  
+  {selectedProduct.price && (
+    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+      <div className="text-sm text-purple-700 mb-1">Price</div>
+      <div className="text-3xl font-bold text-purple-900">
+        {CURRENCIES.find(c => c.code === (selectedProduct.currency || "USD"))?.symbol || "$"}
+        {selectedProduct.price}
+      </div>
+      <div className="text-xs text-purple-600 mt-1">
+        {CURRENCIES.find(c => c.code === (selectedProduct.currency || "USD"))?.name || "US Dollar"}
+      </div>
+    </div>
+  )}
+  
+  <p className="text-gray-700 text-sm leading-relaxed">
+    {selectedProduct.description}
+  </p>
+  
+  <button 
+    onClick={() => {
+      trackClick(selectedProduct.id, selectedProduct.link);
+      setSelectedProduct(null);
+    }}
+    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 rounded-lg font-medium text-base hover:from-purple-700 hover:to-blue-700 transition-all mt-auto"
+  >
+    {selectedProduct.platform && selectedProduct.platform !== "External" 
+      ? `Get from ${selectedProduct.platform}` 
+      : "Get Product"}
+    <ExternalLink className="inline ml-2" size={18} />
+  </button>
+</div>
                 {/* Article Reading Modal */}
 
               </div>
             </div>
-          </div>
+          
         )}
   
         <style>{`
@@ -1367,6 +1467,46 @@ if (isArticlesListRoute) {
                 <select value={formData.category} onChange={(e) => setFormData((f) => ({ ...f, category: e.target.value }))} className="w-full p-3 border rounded text-gray-900 bg-white">
                   {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
+                {/* Added these new fields */}
+<div className="grid grid-cols-2 gap-3">
+  <div>
+    <label className="block mb-1 text-gray-900 font-medium text-sm">Platform</label>
+    <select 
+      value={formData.platform || "External"} 
+      onChange={(e) => setFormData((f) => ({ ...f, platform: e.target.value }))} 
+      className="w-full p-3 border rounded text-gray-900 bg-white"
+    >
+      {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+    </select>
+  </div>
+  
+  <div>
+    <label className="block mb-1 text-gray-900 font-medium text-sm">Currency</label>
+    <select 
+      value={formData.currency || "USD"} 
+      onChange={(e) => setFormData((f) => ({ ...f, currency: e.target.value }))} 
+      className="w-full p-3 border rounded text-gray-900 bg-white"
+    >
+      {CURRENCIES.map((c) => (
+        <option key={c.code} value={c.code}>
+          {c.symbol} {c.code} - {c.name}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+
+<div>
+  <label className="block mb-1 text-gray-900 font-medium text-sm">Price (optional)</label>
+  <input 
+    type="text"
+    value={formData.price || ""} 
+    onChange={(e) => setFormData((f) => ({ ...f, price: e.target.value }))} 
+    placeholder="29.99 or Free or Starting at 49" 
+    className="w-full p-3 border rounded text-gray-900 bg-white"
+  />
+  <p className="text-xs text-gray-500 mt-1">Leave blank to hide price. Examples: 29.99, Free, 19-99</p>
+</div>
 
                 <textarea value={formData.description} onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))} className="w-full p-3 border rounded text-gray-900 bg-white" placeholder="Short description (2-3 lines)" rows={4} />
                 {fieldErrors.description && <div className="text-red-500 text-sm">{fieldErrors.description}</div>}
@@ -1513,6 +1653,22 @@ Check out this product: https://yourdomain.com/#product-abc123
           <p className="text-xs text-gray-600 mt-1">
             <span className="inline-block bg-gray-100 px-2 py-1 rounded">{product.category}</span>
           </p>
+          {/*show price and platform*/}
+          <h4 className="font-bold text-base text-gray-900 line-clamp-2">{product.name}</h4>
+  <p className="text-xs text-gray-600 mt-1">
+    <span className="inline-block bg-gray-100 px-2 py-1 rounded">{product.category}</span>
+    {product.platform && product.platform !== "External" && (
+      <span className="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded ml-1 text-xs">
+        {product.platform}
+      </span>
+    )}
+  </p>
+  {product.price && (
+    <p className="text-sm font-bold text-purple-700 mt-1">
+      {CURRENCIES.find(c => c.code === (product.currency || "USD"))?.symbol || "$"}
+      {product.price}
+    </p>
+  )}
           {product.clicks !== undefined && (
             <p className="text-xs text-gray-500 mt-1">
               👁️ {product.clicks} clicks
