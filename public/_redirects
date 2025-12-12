@@ -1,0 +1,9 @@
+# Redirect old hash URLs to new slug URLs
+/#product-* /products/:splat 301
+/#article-* /articles/:splat 301
+
+# SPA routes
+/products/* /products/[slug] 200
+/articles/* /articles/[slug] 200
+
+/*  /index.html 200

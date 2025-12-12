@@ -90,19 +90,40 @@ const updateMetaTags = ({ title, description, image, url }) => {
 
 // ---------- Main Component ----------
 export default function App() {
+  // ========== ROUTE DETECTION ==========
+  
   const isAdminRoute = typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.hash === "#admin");
-  const isArticleRoute = typeof window !== "undefined" && window.location.hash.startsWith("#article-");
-  const articleIdFromHash = isArticleRoute ? window.location.hash.replace("#article-", "") : null;
-  // Added these two lines:
-  const isProductRoute = typeof window !== "undefined" && window.location.hash.startsWith("#product-") && !isAdminRoute;
-  const productIdFromHash = isProductRoute ? window.location.hash.replace("#product-", "") : null;
-  // route detection
-  const isArticlesListRoute = typeof window !== "undefined" && window.location.hash === "#articles" && !isAdminRoute;
+
+  // Slug-based routes (SEO-friendly)
+  const isSlugArticleRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/articles/") && !isAdminRoute;
+  const articleSlug = isSlugArticleRoute ? window.location.pathname.replace("/articles/", "").replace(/\/$/, "") : null;
+
+  const isSlugProductRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/products/") && !isAdminRoute;
+  const productSlug = isSlugProductRoute ? window.location.pathname.replace("/products/", "").replace(/\/$/, "") : null;
+
+  // Hash-based routes (backward compatibility - old URLs)
+  const currentHash = typeof window !== "undefined" ? window.location.hash : "";
+  const isArticleRoute = currentHash.startsWith("#article-");
+  const articleIdFromHash = isArticleRoute ? currentHash.replace("#article-", "") : null;
+
+  const isProductRoute = currentHash.startsWith("#product-");
+  const productIdFromHash = isProductRoute ? currentHash.replace("#product-", "") : null;
+
+  const isArticlesListRoute = currentHash === "#articles" && !isAdminRoute;
+
+  // Preloaded data from server (for SEO)
+  const preloadedArticle = typeof window !== "undefined" && window.__ARTICLE_DATA__;
+  const preloadedProduct = typeof window !== "undefined" && window.__PRODUCT_DATA__;
+
+  // ========== STATE & DATA ==========
+  
   // auth
   const [user, setUser] = useState(null);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // ... rest of  state declarations
 
   // products
   const [products, setProducts] = useState([]);
@@ -608,20 +629,30 @@ const handleDeleteArticle = async (id) => {
 };
 
 // ---------- ARTICLE PAGE ----------
-if (isArticleRoute) {
-  console.log("Rendering article page, articles count:", articles.length);
+// ---------- ARTICLE PAGE (Slug-based or Hash-based) ----------
+if (isSlugArticleRoute || isArticleRoute) {
+  let currentArticle = null;
   
-  const currentArticle = articles.find(a => a.id === articleIdFromHash);
-  console.log("Current article found:", currentArticle);
-
+  // Priority 1: Use server-preloaded data (for SEO)
+  if (preloadedArticle) {
+    currentArticle = preloadedArticle;
+  }
+  // Priority 2: Find by slug (new URL format)
+  else if (articleSlug && articles.length > 0) {
+    currentArticle = articles.find(a => a.slug === articleSlug);
+  }
+  // Priority 3: Find by hash ID (old URL format - backward compatibility)
+  else if (articleIdFromHash && articles.length > 0) {
+    currentArticle = articles.find(a => a.id === articleIdFromHash);
+  }
+  
   // Show loading while articles are being fetched
-  if (articles.length === 0) {
+  if (!currentArticle && articles.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading article...</p>
-          <p className="text-gray-500 text-sm mt-2">Article ID: {articleIdFromHash}</p>
         </div>
       </div>
     );
@@ -634,7 +665,6 @@ if (isArticleRoute) {
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Article Not Found</h2>
           <p className="text-gray-600 mb-2">The article you're looking for doesn't exist.</p>
-          <p className="text-gray-500 text-sm mb-6">ID: {articleIdFromHash}</p>
           <a 
             href="/" 
             className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
@@ -646,7 +676,7 @@ if (isArticleRoute) {
     );
   }
 
-  // Show the article
+  // Show the article (YOUR EXISTING ARTICLE PAGE JSX - NO CHANGES NEEDED HERE)
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
       <header className="bg-white shadow-md sticky top-0 z-50">
@@ -693,21 +723,35 @@ if (isArticleRoute) {
               </span>
             </div>
 
-        <div 
+          <div 
   className="prose prose-lg max-w-none text-gray-700 leading-relaxed article-content"
+  onClick={(e) => {
+    if (e.target.tagName === 'A') {
+      const href = e.target.getAttribute('href');
+      
+      // Handle product/article links
+      if (href && href.startsWith('/products/')) {
+        e.preventDefault();
+        window.location.href = href;
+      } else if (href && href.startsWith('/articles/')) {
+        e.preventDefault();
+        window.location.href = href;
+      }
+    }
+  }}
   dangerouslySetInnerHTML={{ 
     __html: currentArticle.content
       .replace(/\n/g, '<br/>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      // Simple hash link replacement
-      .replace(/(#product-[a-zA-Z0-9]+)/g, '<a href="$1" target="_blank" class="text-purple-600 underline hover:text-purple-700 font-semibold">View Product →</a>')
-      .replace(/(#article-[a-zA-Z0-9]+)/g, '<a href="$1" target="_blank" class="text-purple-600 underline hover:text-purple-700 font-semibold">Read Article →</a>')
-      // URLs
+      // Convert old #product-id links to new /products/slug format
+      .replace(/https?:\/\/[^\s]*\/products\/([a-zA-Z0-9-]+)/g, '<a href="/products/$1" class="text-purple-600 underline hover:text-purple-700 font-semibold">🛍️ View Product →</a>')
+      // Convert old #article-id links to new /articles/slug format
+      .replace(/https?:\/\/[^\s]*\/articles\/([a-zA-Z0-9-]+)/g, '<a href="/articles/$1" class="text-blue-600 underline hover:text-blue-700 font-semibold">📖 Read Article →</a>')
+      // External URLs
       .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-purple-600 underline hover:text-purple-700">$1</a>')
   }}
 />
-
             <div className="mt-12 pt-8 border-t">
               <a 
                 href="/" 
@@ -728,15 +772,26 @@ if (isArticleRoute) {
     </div>
   );
 }
-  // ---------- PRODUCT DETAIL PAGE ----------
-if (isProductRoute) {
-  console.log("Rendering product page, products count:", products.length);
-  
-  const currentProduct = products.find(p => p.id === productIdFromHash);
-  console.log("Current product found:", currentProduct);
 
-  // Show loading while products are being fetched
-  if (products.length === 0) {
+
+// ---------- PRODUCT DETAIL PAGE ----------
+if (isSlugProductRoute || isProductRoute) {
+  let currentProduct = null;
+  
+  // Priority 1: Use server-preloaded data
+  if (preloadedProduct) {
+    currentProduct = preloadedProduct;
+  }
+  // Priority 2: Find by slug
+  else if (productSlug && products.length > 0) {
+    currentProduct = products.find(p => p.slug === productSlug);
+  }
+  // Priority 3: Find by hash ID (backward compatibility)
+  else if (productIdFromHash && products.length > 0) {
+    currentProduct = products.find(p => p.id === productIdFromHash);
+  }
+  
+  if (!currentProduct && products.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -747,7 +802,6 @@ if (isProductRoute) {
     );
   }
 
-  // Show not found if product doesn't exist
   if (!currentProduct) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
@@ -765,10 +819,8 @@ if (isProductRoute) {
     );
   }
 
-  // Log view
   logView(currentProduct.id);
 
-  // Show the product detail page
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
       <header className="bg-white shadow-md sticky top-0 z-50">
@@ -788,7 +840,6 @@ if (isProductRoute) {
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8 p-6 md:p-10">
-            {/* Left: Product Image */}
             <div className="flex items-center justify-center bg-gray-50 rounded-xl p-6">
               <img 
                 src={currentProduct.image} 
@@ -797,61 +848,60 @@ if (isProductRoute) {
               />
             </div>
             
-           {/* Right: Product Details */}
-<div className="flex flex-col">
-  <div className="flex items-center justify-between mb-4">
-    <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-      {currentProduct.category}
-    </span>
-    {currentProduct.platform && currentProduct.platform !== "External" && (
-      <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
-        {currentProduct.platform}
-      </span>
-    )}
-  </div>
-  
-  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-    {currentProduct.name}
-  </h1>
-  
-  {currentProduct.price && (
-    <div className="bg-purple-50 border-l-4 border-purple-600 rounded-lg p-4 mb-6">
-      <div className="text-sm text-purple-700 mb-1">Price</div>
-      <div className="text-4xl font-bold text-purple-900">
-        {CURRENCIES.find(c => c.code === (currentProduct.currency || "USD"))?.symbol || "$"}
-        {currentProduct.price}
-      </div>
-      <div className="text-xs text-purple-600 mt-1">
-        {CURRENCIES.find(c => c.code === (currentProduct.currency || "USD"))?.name || "US Dollar"}
-      </div>
-    </div>
-  )}
-  
-  <p className="text-gray-700 text-base leading-relaxed mb-6 flex-1">
-    {currentProduct.description}
-  </p>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                  {currentProduct.category}
+                </span>
+                {currentProduct.platform && currentProduct.platform !== "External" && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                    {currentProduct.platform}
+                  </span>
+                )}
+              </div>
+              
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                {currentProduct.name}
+              </h1>
+              
+              {currentProduct.price && (
+                <div className="bg-purple-50 border-l-4 border-purple-600 rounded-lg p-4 mb-6">
+                  <div className="text-sm text-purple-700 mb-1">Price</div>
+                  <div className="text-4xl font-bold text-purple-900">
+                    {CURRENCIES.find(c => c.code === (currentProduct.currency || "USD"))?.symbol || "$"}
+                    {currentProduct.price}
+                  </div>
+                  <div className="text-xs text-purple-600 mt-1">
+                    {CURRENCIES.find(c => c.code === (currentProduct.currency || "USD"))?.name || "US Dollar"}
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-gray-700 text-base leading-relaxed mb-6 flex-1">
+                {currentProduct.description}
+              </p>
 
-  {currentProduct.clicks !== undefined && (
-    <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 pb-6 border-b">
-      <TrendingUp size={16} />
-      <span>{currentProduct.clicks} people viewed this product</span>
-    </div>
-  )}
-  
-  <button 
-    onClick={() => trackClick(currentProduct.id, currentProduct.link)}
-    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-  >
-    {currentProduct.platform && currentProduct.platform !== "External" 
-      ? `Get from ${currentProduct.platform}` 
-      : "Get Product"}
-    <ExternalLink size={20} />
-  </button>
+              {currentProduct.clicks !== undefined && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 pb-6 border-b">
+                  <TrendingUp size={16} />
+                  <span>{currentProduct.clicks} people viewed this product</span>
+                </div>
+              )}
+              
+              <button 
+                onClick={() => trackClick(currentProduct.id, currentProduct.link)}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                {currentProduct.platform && currentProduct.platform !== "External" 
+                  ? `Get from ${currentProduct.platform}` 
+                  : "Get Product"}
+                <ExternalLink size={20} />
+              </button>
 
-  <p className="text-sm text-gray-500 text-center mt-4">
-    This is an affiliate link. We may earn a commission at no extra cost to you.
-  </p>
-</div>
+              <p className="text-sm text-gray-500 text-center mt-4">
+                This is an affiliate link. We may earn a commission at no extra cost to you.
+              </p>
+            </div>
           </div>
         </div>
       </main>
@@ -864,6 +914,8 @@ if (isProductRoute) {
     </div>
   );
 }
+
+// Now the rest of your code continues (Articles List Page, Public Homepage, etc.)
   // ---------- ARTICLES LIST PAGE ----------
 if (isArticlesListRoute) {
   const publishedArticles = articles.filter(a => a.published !== false);
@@ -914,7 +966,7 @@ if (isArticlesListRoute) {
                   <span>{new Date(article.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</span>
                 </div>
                 <a 
-                  href={`#article-${article.id}`}
+                  href={`/articles/${article.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full text-center bg-purple-600 text-white py-2 rounded-lg font-medium hover:bg-purple-700 transition"
@@ -985,7 +1037,7 @@ if (isArticlesListRoute) {
                 <h2 className="text-3xl font-bold mt-2 text-gray-600 dark:text-gray-600">Find the best digital tools and courses</h2>
                 <p className="mt-2 text-gray-600 dark:text-gray-700">A curated collection of affiliate products - tutorials, tools, templates and more. Click any product to learn more and buy.</p>
                 <div className="mt-4 flex gap-3">
-                  <a className="px-4 py-2 rounded bg-gradient-to-r from-purple-500 to-purple-500 text-white" href="#products">Browse Products</a>
+                  <a className="px-4 py-2 rounded bg-gradient-to-r from-purple-500 to-blue-500 text-white" href="#products">Browse Products</a>
                 </div>
               </div>
 
@@ -1021,10 +1073,8 @@ if (isArticlesListRoute) {
                       <article key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
   <div className="flex flex-row gap-3 p-3">
     {/* Left: Product Image */}
-    <button
-      onClick={() => openProductDetail(product)}
-      className="flex-shrink-0 cursor-pointer focus:outline-none"
-    >
+    <div className="flex items-center justify-center">
+    <a href={`/products/${product.slug}`}>
       <img 
         src={product.image} 
         alt={product.name} 
@@ -1032,21 +1082,23 @@ if (isArticlesListRoute) {
         loading="lazy"
         onError={(e) => e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ffffff" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af"%3ENo Image%3C/text%3E%3C/svg%3E'}
       />
-    </button>
-
+    </a>
+    
+    </div>
     {/* Right: Content */}
     <div className="flex-1 flex flex-col gap-2">
-      <button
-        onClick={() => openProductDetail(product)}
-        className="text-left focus:outline-none"
-      >
+      <div>
+      <a href={`/products/${product.slug}`}>
+        
+      
         <h3 className="font-bold text-base text-gray-900 line-clamp-2">
           {product.name}
         </h3>
         <p className="text-sm text-gray-700 line-clamp-2 mt-2">
           {product.description}
         </p>
-      </button>
+      </a>
+      </div>
       {/* price and button section */}
       <div className="flex flex-col gap-2 mt-auto">
   {/* Price display */}
@@ -1169,7 +1221,7 @@ if (isArticlesListRoute) {
               {article.excerpt}
             </p>
             <a 
-              href={`#article-${article.id}`}
+              href={`/articles/${article.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 inline-block text-purple-600 font-medium text-sm hover:text-purple-700"
@@ -1649,10 +1701,7 @@ Check out this product: https://yourdomain.com/#product-abc123
       
       <div className="flex-1 flex flex-col gap-2">
         <div>
-          <h4 className="font-bold text-base text-gray-900 line-clamp-2">{product.name}</h4>
-          <p className="text-xs text-gray-600 mt-1">
-            <span className="inline-block bg-gray-100 px-2 py-1 rounded">{product.category}</span>
-          </p>
+          
           {/*show price and platform*/}
           <h4 className="font-bold text-base text-gray-900 line-clamp-2">{product.name}</h4>
   <p className="text-xs text-gray-600 mt-1">
@@ -1704,9 +1753,9 @@ Check out this product: https://yourdomain.com/#product-abc123
   </a>
   <button
   onClick={() => {
-    const link = `${window.location.origin}/#product-${product.id}`;
+    const link = `${window.location.origin}/products/${product.slug}`;
     navigator.clipboard.writeText(link);
-    alert("Product link copied! 📋\n\nShare on social media:\n" + link + "\n\nFor articles, use: #product-" + product.id);
+    alert("Product link copied! 📋\n\nShare on social media:\n" + link);
   }}
   className="flex-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-medium"
 >
@@ -1752,7 +1801,7 @@ Check out this product: https://yourdomain.com/#product-abc123
 
           <div className="flex gap-2 mt-2">
             <a 
-              href={`#article-${article.id}`} 
+              href={`/articles/${article.slug}`} 
               target="_blank" 
               rel="noreferrer" 
               className="flex-1 text-xs text-purple-600 hover:text-purple-700 underline text-center py-1"
@@ -1761,7 +1810,7 @@ Check out this product: https://yourdomain.com/#product-abc123
             </a>
             <button
   onClick={() => {
-    const link = `${window.location.origin}/#article-${article.id}`;
+    const link = `${window.location.origin}/articles/${article.slug}`;
     navigator.clipboard.writeText(link);
     alert("Article link copied! 📋\n\nShare on social media:\n" + link);
   }}

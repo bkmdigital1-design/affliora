@@ -1,0 +1,6 @@
+Create `public/robots.txt`:
+```
+User-agent: *
+Allow: /
+
+Sitemap: https://affliora.com/sitemap.xml
