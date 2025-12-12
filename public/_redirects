@@ -1,9 +1,1 @@
-# Don't redirect asset files
-/assets/*  /assets/:splat  200
-
-# Old hash URLs redirect to new routes
-/#product-*  /products/:splat  301
-/#article-*  /articles/:splat  301
-
-# SPA fallback - must be LAST
 /*  /index.html  200
