@@ -3,13 +3,17 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './', // Ensures correct asset paths
   build: {
-    outDir: 'dist', // default for Vite
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
-        // optional: split chunks if needed
+        assetFileNames: 'assets/[name].[hash][extname]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js'
       }
     }
-  }
+  },
+  base: '/'
 })
