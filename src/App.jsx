@@ -100,7 +100,12 @@ export default function App() {
 
   const isSlugProductRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/products/") && !isAdminRoute;
   const productSlug = isSlugProductRoute ? window.location.pathname.replace("/products/", "").replace(/\/$/, "") : null;
-
+  // Debug logging
+if (isSlugProductRoute) {
+  console.log("Product route detected!");
+  console.log("Product slug:", productSlug);
+  console.log("Products loaded:", products.length);
+}
   // Hash-based routes (backward compatibility - old URLs)
   const currentHash = typeof window !== "undefined" ? window.location.hash : "";
   const isArticleRoute = currentHash.startsWith("#article-");
