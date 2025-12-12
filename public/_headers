@@ -1,0 +1,10 @@
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer-when-downgrade
+
+/products/*
+  X-Robots-Tag: index, follow
+
+/articles/*
+  X-Robots-Tag: index, follow
