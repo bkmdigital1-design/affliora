@@ -1,9 +1,9 @@
-# Redirect old hash URLs to new slug URLs
+/*  /index.html 200# Redirect old hash URLs to new slug URLs (FIXED)
 /#product-* /products/:splat 301
 /#article-* /articles/:splat 301
 
-# SPA routes
-/products/* /products/[slug] 200
-/articles/* /articles/[slug] 200
+# SPA fallback - ALL dynamic routes go to index.html
+/products/* /index.html 200
+/articles/* /index.html 200
 
-/*  /index.html 200
+/* /index.html 200
