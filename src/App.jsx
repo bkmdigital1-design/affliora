@@ -1005,7 +1005,8 @@ if (isArticlesListRoute) {
   );
 }
   // ---------- UI: Public site (no admin link in header) ----------
-  if (!isAdminRoute) {
+  // ---------- UI: Public Homepage (product listing) ----------
+if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRoute && !isArticleRoute && !isArticlesListRoute) {
     return (
       <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50"}`}>
         <header className={`${darkMode ? "bg-gray-800" : "bg-white"} shadow-md sticky top-0 z-50`}>
