@@ -90,30 +90,47 @@ const updateMetaTags = ({ title, description, image, url }) => {
 
 // ---------- Main Component ----------
 export default function App() {
-  // ========== ROUTE DETECTION ==========
-  
-  const isAdminRoute = typeof window !== "undefined" && (window.location.pathname === "/admin" || window.location.hash === "#admin");
+  // ========== ROUTE DETECTION (FIXED) ==========
+// Replace your current route detection code with this:
 
-  // Slug-based routes (SEO-friendly)
-  const isSlugArticleRoute =false// typeof window !== "undefined" && window.location.pathname.startsWith("/articles/") && !isAdminRoute;
-  const articleSlug = isSlugArticleRoute ? window.location.pathname.replace("/articles/", "").replace(/\/$/, "") : null;
+const isAdminRoute = typeof window !== "undefined" && 
+  (window.location.pathname === "/admin" || window.location.hash === "#admin");
 
-  const isSlugProductRoute =false// typeof window !== "undefined" && window.location.pathname.startsWith("/products/") && !isAdminRoute;
-  const productSlug = isSlugProductRoute ? window.location.pathname.replace("/products/", "").replace(/\/$/, "") : null;
+// SLUG-BASED ROUTES (NEW - SEO FRIENDLY)
+const isSlugArticleRoute = typeof window !== "undefined" && 
+  window.location.pathname.startsWith("/articles/") && 
+  window.location.pathname !== "/articles/" &&
+  !isAdminRoute;
 
-  // Hash-based routes (backward compatibility - old URLs)
-  const currentHash = typeof window !== "undefined" ? window.location.hash : "";
-  const isArticleRoute = currentHash.startsWith("#article-");
-  const articleIdFromHash = isArticleRoute ? currentHash.replace("#article-", "") : null;
+const articleSlug = isSlugArticleRoute 
+  ? window.location.pathname.replace("/articles/", "").replace(/\/$/, "") 
+  : null;
 
-  const isProductRoute = currentHash.startsWith("#product-");
-  const productIdFromHash = isProductRoute ? currentHash.replace("#product-", "") : null;
+const isSlugProductRoute = typeof window !== "undefined" && 
+  window.location.pathname.startsWith("/products/") && 
+  window.location.pathname !== "/products/" &&
+  !isAdminRoute;
 
-  const isArticlesListRoute = currentHash === "#articles" && !isAdminRoute;
+const productSlug = isSlugProductRoute 
+  ? window.location.pathname.replace("/products/", "").replace(/\/$/, "") 
+  : null;
 
-  // Preloaded data from server (for SEO)
-  const preloadedArticle = typeof window !== "undefined" && window.__ARTICLE_DATA__;
-  const preloadedProduct = typeof window !== "undefined" && window.__PRODUCT_DATA__;
+// HASH-BASED ROUTES (OLD - BACKWARD COMPATIBILITY)
+const currentHash = typeof window !== "undefined" ? window.location.hash : "";
+const isArticleRoute = currentHash.startsWith("#article-");
+const articleIdFromHash = isArticleRoute ? currentHash.replace("#article-", "") : null;
+
+const isProductRoute = currentHash.startsWith("#product-");
+const productIdFromHash = isProductRoute ? currentHash.replace("#product-", "") : null;
+
+const isArticlesListRoute = currentHash === "#articles" && !isAdminRoute;
+
+// PRELOADED DATA (FOR SSR/PRERENDERING)
+const preloadedArticle = typeof window !== "undefined" && window.__ARTICLE_DATA__;
+const preloadedProduct = typeof window !== "undefined" && window.__PRODUCT_DATA__;
+
+// NOTE: Your existing article/product page rendering code is already correct!
+// The issue was just these 2 lines being set to `false`
 
   // ========== STATE & DATA ==========
   
