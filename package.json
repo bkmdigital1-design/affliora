@@ -8,6 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "sitemap": "node generate-sitemap.js",
+    "deploy": "npm run sitemap && npm run build",
     "migrate-articles": "node scripts/migrateArticles.js",
     "migrate-products": "node scripts/migrateProducts.js",
     "generate-sitemap": "node scripts/generateSitemap.js"
