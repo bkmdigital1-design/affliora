@@ -42,7 +42,7 @@ const generateSlug = (name) =>
     .replace(/\s+/g, "-");
 
 const ProductSkeleton = () => (
-  <div className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse">
+  <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden animate-pulse">
     <div className="w-full h-44 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-shimmer" />
     <div className="p-4 space-y-2">
       <div className="h-4 bg-gray-200 rounded w-3/4" />
@@ -698,10 +698,10 @@ if (isSlugArticleRoute || isArticleRoute) {
   // Show the article (YOUR EXISTING ARTICLE PAGE JSX - NO CHANGES NEEDED HERE)
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
-      <header className="bg-white shadow-md sticky top-0 z-50">
+      <header className="bg-white shadow-lg hover:shadow-2xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center">
               <span className="text-white text-xl font-bold">A</span>
             </div>
             <span className="font-bold text-gray-900">Affliora</span>
@@ -842,10 +842,10 @@ if (isSlugProductRoute || isProductRoute) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
-      <header className="bg-white shadow-md sticky top-0 z-50">
+      <header className="bg-white shadow-lg hover:shadow-2xl sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center">
               <span className="text-white text-xl font-bold">A</span>
             </div>
             <span className="font-bold text-gray-900">Affliora</span>
@@ -859,7 +859,7 @@ if (isSlugProductRoute || isProductRoute) {
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8 p-6 md:p-10">
-            <div className="flex items-center justify-center bg-gray-50 rounded-xl p-6">
+            <div className="flex items-center justify-center bg-gray-50 rounded-2xl p-6">
               <img 
                 src={currentProduct.image} 
                 alt={currentProduct.name} 
@@ -909,7 +909,7 @@ if (isSlugProductRoute || isProductRoute) {
               
               <button 
                 onClick={() => trackClick(currentProduct.id, currentProduct.link)}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-2xl font-semibold text-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {currentProduct.platform && currentProduct.platform !== "External" 
                   ? `Get from ${currentProduct.platform}` 
@@ -941,10 +941,10 @@ if (isArticlesListRoute) {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
-      <header className="bg-white shadow-md sticky top-0 z-50">
+      <header className="bg-white shadow-lg hover:shadow-2xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center">
               <span className="text-white text-xl font-bold">A</span>
             </div>
             <span className="font-bold text-gray-900">Affliora</span>
@@ -965,7 +965,7 @@ if (isArticlesListRoute) {
           {publishedArticles.map((article) => (
             <article 
               key={article.id} 
-              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
+              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden hover:shadow-lg transition"
             >
               {article.image && (
                 <img src={article.image} alt={article.title} className="w-full h-48 object-cover" />
@@ -1011,10 +1011,10 @@ if (isArticlesListRoute) {
 if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRoute && !isArticleRoute && !isArticlesListRoute) {
     return (
       <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50"}`}>
-        <header className={`${darkMode ? "bg-gray-800" : "bg-white"} shadow-md sticky top-0 z-50`}>
+        <header className={`${darkMode ? "bg-gray-800" : "bg-white"} shadow-lg hover:shadow-2xl sticky top-0 z-50`}>
           <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center">
                 <span className="text-white text-2xl font-bold">A</span>
               </div>
               <div>
@@ -1039,10 +1039,10 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-700 bg-white"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-2xl text-gray-700 bg-white"
                 />
               </div>
-              <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }} className="px-4 py-3 border rounded-xl bg-white bg-white text-gray-600 font-medium">
+              <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }} className="px-4 py-3 border rounded-2xl bg-white bg-white text-gray-600 font-medium">
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -1052,7 +1052,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
         <main className="max-w-7xl mx-auto px-4 py-12">
           {/* HERO + FEATURED */}
           <section className="mb-8">
-            <div className="bg-white dark:bg-gray-200 rounded-2xl p-6 shadow-md flex flex-col md:flex-row gap-6">
+            <div className="bg-white dark:bg-gray-200 rounded-2xl p-6 shadow-lg hover:shadow-2xl flex flex-col md:flex-row gap-6">
               <div className="flex-1">
                 <h2 className="text-3xl font-bold mt-2 text-gray-600 dark:text-gray-600">Find the best digital tools and courses</h2>
                 <p className="mt-2 text-gray-600 dark:text-gray-700">A curated collection of affiliate products - tutorials, tools, templates and more. Click any product to learn more and buy.</p>
@@ -1063,7 +1063,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
 
               <div className="w-full md:w-1/3">
                 {featured ? (
-                  <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-xl">
+                  <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-2xl">
                     <h3 className="font-semibold">Featured</h3>
                     <p className="text-lg font-bold mt-2">{featured.name}</p>
                     <p className="mt-2 text-sm line-clamp-3">{featured.description}</p>
@@ -1073,7 +1073,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-100 dark:bg-gray-300 p-4 rounded-xl text-center text-gray-500 font-medium">No featured product yet</div>
+                  <div className="bg-gray-100 dark:bg-gray-300 p-4 rounded-2xl text-center text-gray-500 font-medium">No featured product yet</div>
                 )}
               </div>
             </div>
@@ -1090,7 +1090,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
                 {filteredProducts.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredProducts.map((product) => (
-                      <article key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
+                      <article key={product.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden hover:shadow-lg transition">
   <div className="flex flex-row gap-3 p-3">
     {/* Left: Product Image */}
     <div className="flex items-center justify-center">
@@ -1225,7 +1225,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
         .map((article) => (
         <article 
           key={article.id} 
-          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer"
+          className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden hover:shadow-lg transition cursor-pointer"
         >
           {article.image && (
             <img src={article.image} alt={article.title} className="w-full h-48 object-cover" />
@@ -1510,7 +1510,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
         {/* Add/Edit Modal */}
         {isAdding && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xl font-bold text-gray-900">{editingId ? "Edit" : "Add"} Product</h3>
                 <button onClick={() => { setIsAdding(false); setEditingId(null); }}><X /></button>
@@ -1602,7 +1602,7 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
         {/* Add/Edit Article Modal */}
         {showBlogModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl p-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xl font-bold text-gray-900">
                   {articleFormData.id ? "Edit" : "Add"} Article
@@ -1698,7 +1698,7 @@ Check out this product: https://yourdomain.com/#product-abc123
         {/* Product list for admin */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {products.map((product) => (
-  <div key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden relative hover:shadow-lg transition">
+  <div key={product.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden relative hover:shadow-lg transition">
     {!product.visible && (
       <div className="absolute left-0 top-0 bg-red-500 text-white px-3 py-1 text-xs font-semibold rounded-br-lg z-10">
         HIDDEN
