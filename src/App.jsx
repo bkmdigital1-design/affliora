@@ -133,8 +133,7 @@ const preloadedProduct = typeof window !== "undefined" && window.__PRODUCT_DATA_
 // The issue was just these 2 lines being set to `false`
 
   // ========== STATE & DATA ==========
-  //toast state
-  const [toast, setToast] = useState(null);
+  
   // auth
   const [user, setUser] = useState(null);
   const [adminEmail, setAdminEmail] = useState("");
@@ -152,7 +151,8 @@ const preloadedProduct = typeof window !== "undefined" && window.__PRODUCT_DATA_
   //newsletter state
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] = useState(""); // success, error, or empty
-
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+  
   //blogs state
   const [articles, setArticles] = useState([]);
   const [showBlogModal, setShowBlogModal] = useState(false);
@@ -584,31 +584,71 @@ const handleSubmit = async (e) => {
 //newsletter submission function
 const handleNewsletterSignup = async (e) => {
   e.preventDefault();
+  
   // Validate email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(newsletterEmail)) {
     setNewsletterStatus("error");
-    alert("Please enter a valid email address");
+    setNewsletterMessage("Please enter a valid email address");
     return;
   }
   
+  setNewsletterStatus("loading");
+  setNewsletterMessage("Subscribing...");
+  
   try {
-    await addDoc(collection(db, "newsletter"), {
-      email: newsletterEmail.trim().toLowerCase(),
-      subscribedAt: serverTimestamp(),
-      source: "website"
+    // Send to ConvertKit via API
+    const response = await fetch('/api/convertkit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: newsletterEmail,
+        tags: ['Website Signup', 'Affliora Newsletter']
+      })
     });
     
-    setNewsletterStatus("success");
-    setNewsletterEmail("");
-    //removed newsletter alert here
+    const data = await response.json();
     
-    // Reset status after 3 seconds
-    setTimeout(() => setNewsletterStatus(""), 3000);
+    if (response.ok && data.success) {
+      // SUCCESS! Also save to Firebase as backup
+      try {
+        await addDoc(collection(db, "newsletter"), {
+          email: newsletterEmail.trim().toLowerCase(),
+          subscribedAt: serverTimestamp(),
+          source: "website",
+          convertKitSynced: true
+        });
+      } catch (fbError) {
+        console.error("Firebase backup failed:", fbError);
+        // Continue anyway - ConvertKit subscription succeeded
+      }
+      
+      setNewsletterStatus("success");
+      setNewsletterMessage("🎉 Thanks for subscribing! Check your email to confirm.");
+      setNewsletterEmail("");
+      
+      // Reset status after 5 seconds
+      setTimeout(() => {
+        setNewsletterStatus("");
+        setNewsletterMessage("");
+      }, 5000);
+      
+    } else {
+      throw new Error(data.error || 'Subscription failed');
+    }
+    
   } catch (err) {
     console.error("Newsletter signup error:", err);
     setNewsletterStatus("error");
-    alert("Subscription failed. Please try again.");
+    setNewsletterMessage("Something went wrong. Please try again.");
+    
+    // Reset error after 5 seconds
+    setTimeout(() => {
+      setNewsletterStatus("");
+      setNewsletterMessage("");
+    }, 5000);
   }
 };
   //article submit function
@@ -1201,58 +1241,51 @@ if (!isAdminRoute && !isSlugProductRoute && !isSlugArticleRoute && !isProductRou
           </section>
           {/* Newsletter Section */}
         <section className="mt-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-8 md:p-12 text-white shadow-xl">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-2xl md:text-4xl font-bold mb-4">
-              Stay Updated with the Best Products
-            </h2>
-            <p className="text-base mb-6 text-purple-100">
-              Get weekly recommendations of top digital products, exclusive deals, and insider tips delivered to your inbox.
-            </p>
-            
-            <form onSubmit={handleNewsletterSignup} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input
-                type="email"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
-                required
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-all shadow-lg"
-              >
-                Subscribe
-              </button>
-            </form>
-
-            {/*---------- TOAST NOTIFICATIONS- Render the toast ----------*/}
-{toast && (
-  <div className="fixed bottom-6 right-6 z-50">
-    <div
-      className={`px-5 py-3 rounded-lg shadow-xl text-sm font-medium
-        ${toast.type === "success"
-          ? "bg-green-600 text-white"
-          : "bg-red-600 text-white"}
-      `}
-    >
-      {toast.message}
-    </div>
+  <div className="max-w-2xl mx-auto text-center">
+    <h2 className="text-2xl md:text-4xl font-bold mb-4">
+      Stay Updated with the Best Products
+    </h2>
+    <p className="text-lg mb-6 text-purple-100">
+      Get weekly recommendations of top digital products, exclusive deals, and insider tips delivered to your inbox.
+    </p>
+    
+    <form onSubmit={handleNewsletterSignup} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+      <input
+        type="email"
+        value={newsletterEmail}
+        onChange={(e) => setNewsletterEmail(e.target.value)}
+        placeholder="Enter your email"
+        disabled={newsletterStatus === "loading"}
+        className="flex-1 px-4 py-3 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed"
+        required
+      />
+      <button
+        type="submit"
+        disabled={newsletterStatus === "loading"}
+        className="px-6 py-3 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {newsletterStatus === "loading" ? "Subscribing..." : "Subscribe"}
+      </button>
+    </form>
+    
+    {/* Status Messages */}
+    {newsletterMessage && (
+      <div className={`mt-4 p-3 rounded-lg ${
+        newsletterStatus === "success" 
+          ? "bg-green-500/20 text-green-100 border border-green-300" 
+          : newsletterStatus === "error"
+          ? "bg-red-500/20 text-red-100 border border-red-300"
+          : "bg-white/20 text-white"
+      }`}>
+        {newsletterMessage}
+      </div>
+    )}
+    
+    <p className="mt-4 text-sm text-purple-200">
+      No spam. Unsubscribe anytime. We respect your privacy.
+    </p>
   </div>
-)}
-            
-            {newsletterStatus === "success" && (
-              <p className="mt-4 text-green-200 font-medium animate-fadeIn">
-                <span className="text-green-300">✓</span> 
-                Successfully subscribed!
-              </p>
-            )}
-            
-            <p className="mt-4 text-sm text-purple-200">
-              No spam. Unsubscribe anytime. We respect your privacy.
-            </p>
-          </div>
-        </section>
+</section>
         {/* Blog/Articles Section */}
        {/* Blog/Articles Section */}
 {articles.filter(a => a.published !== false).length > 0 && (
